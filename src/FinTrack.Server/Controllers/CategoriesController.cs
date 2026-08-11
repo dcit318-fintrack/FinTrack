@@ -1,5 +1,7 @@
 using FinTrack.Server.Data;
+using FinTrack.Server.Models;
 using FinTrack.Shared.DTOs.Category;
+using FinTrack.Shared.DTOs.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,5 +35,45 @@ public class CategoriesController : ControllerBase
             .ToListAsync();
 
         return Ok(categories);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
+    {
+        var nameNormalized = request.Name.Trim();
+        var typeNormalized = request.Type.Equals("Income", StringComparison.OrdinalIgnoreCase) ? "Income" : "Expense";
+
+        var exists = await _dbContext.Categories
+            .AnyAsync(c => c.Name.ToLower() == nameNormalized.ToLower());
+
+        if (exists)
+        {
+            var errors = new Dictionary<string, string[]>
+            {
+                { "name", new[] { $"Category '{nameNormalized}' already exists." } }
+            };
+            return BadRequest(new ErrorResponse { Message = "Validation failed.", Errors = errors });
+        }
+
+        var category = new Category
+        {
+            Id = Guid.NewGuid(),
+            Name = nameNormalized,
+            Type = typeNormalized
+        };
+
+        _dbContext.Categories.Add(category);
+        await _dbContext.SaveChangesAsync();
+
+        var dto = new CategoryDto
+        {
+            Id = category.Id,
+            Name = category.Name,
+            Type = category.Type
+        };
+
+        return CreatedAtAction(nameof(GetCategories), new { id = dto.Id }, dto);
     }
 }
