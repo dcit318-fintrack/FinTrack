@@ -1,11 +1,31 @@
 @namespace FinTrack.Client.Components
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+@implements IDisposable
 
 <header class="app-header">
-    <div class="app-header-left">
-        <img src="images/avatar.svg" alt="User Profile" class="app-avatar" />
+    <div class="app-header-left" style="position: relative;">
+        <img src="images/avatar.svg" alt="User Profile" class="app-avatar" @onclick="ToggleProfileMenu" style="cursor: pointer;" />
+        @if (isProfileMenuOpen)
+        {
+            <div class="profile-dropdown-menu">
+                <div class="profile-menu-header">
+                    <strong>@userName</strong>
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">@userEmail</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 6px 0;" />
+                <NavLink href="login" class="profile-menu-item" @onclick="CloseProfileMenu">Sign In</NavLink>
+                <NavLink href="register" class="profile-menu-item" @onclick="CloseProfileMenu">Register</NavLink>
+                <button class="profile-menu-item" style="border: none; background: transparent; width: 100%; text-align: left; color: #DC2626;" @onclick="HandleLogout">
+                    Sign Out
+                </button>
+            </div>
+        }
     </div>
     <div class="app-header-center">
-        <span class="app-brand-title">Fintrack</span>
+        <NavLink href="" style="text-decoration: none;">
+            <span class="app-brand-title">Fintrack</span>
+        </NavLink>
     </div>
     <div class="app-header-right">
         <button class="icon-button" @onclick="ToggleNotifications" title="Notifications" aria-label="Notifications">
@@ -21,11 +41,85 @@
     </div>
 </header>
 
+<style>
+.profile-dropdown-menu {
+    position: absolute;
+    top: 48px;
+    left: 0;
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+    border: 1px solid #E2E8F0;
+    padding: 8px 0;
+    width: 170px;
+    z-index: 100;
+}
+.profile-menu-header {
+    padding: 6px 14px;
+    font-size: 13px;
+}
+.profile-menu-item {
+    display: block;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    cursor: pointer;
+}
+.profile-menu-item:hover {
+    background-color: #F1F5F9;
+}
+</style>
+
 @code {
     private bool hasUnreadNotifications = true;
+    private bool isProfileMenuOpen = false;
+    private string userName = "Samuel Watson";
+    private string userEmail = "samuel@ug.edu.gh";
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.OnAuthStateChanged += HandleAuthChanged;
+        await LoadUserInfo();
+    }
+
+    private async Task LoadUserInfo()
+    {
+        userName = await AuthService.GetCurrentUserNameAsync();
+        userEmail = await AuthService.GetCurrentUserEmailAsync();
+        StateHasChanged();
+    }
+
+    private void HandleAuthChanged()
+    {
+        InvokeAsync(async () => await LoadUserInfo());
+    }
+
+    private void ToggleProfileMenu()
+    {
+        isProfileMenuOpen = !isProfileMenuOpen;
+    }
+
+    private void CloseProfileMenu()
+    {
+        isProfileMenuOpen = false;
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        CloseProfileMenu();
+        Nav.NavigateTo("login");
+    }
 
     private void ToggleNotifications()
     {
         hasUnreadNotifications = !hasUnreadNotifications;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= HandleAuthChanged;
     }
 }
