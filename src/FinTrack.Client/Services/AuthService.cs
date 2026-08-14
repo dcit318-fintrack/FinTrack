@@ -11,7 +11,7 @@ public class AuthService : IAuthService
     private readonly IJSRuntime _js;
     public event Action? OnAuthStateChanged;
 
-    private string? _token;
+    private string? _token = "demo-active-token";
     private string _currentUserName = "Samuel Watson";
     private string _currentUserEmail = "samuel@ug.edu.gh";
 
