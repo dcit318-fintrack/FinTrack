@@ -506,7 +506,7 @@ html, body {
 /* Floating Action Button (FAB) */
 .fab-container {
     position: fixed;
-    bottom: 86px;
+    bottom: 104px;
     right: max(20px, calc(50% - 200px));
     z-index: 50;
 }
@@ -1042,6 +1042,91 @@ html, body {
     font-weight: 600;
     cursor: pointer;
     margin-top: 8px;
+}
+
+/* Auth Styles */
+.auth-main-content {
+    padding: 40px 20px 30px 20px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+@media (min-width: 640px) {
+    .auth-main-content {
+        min-height: 840px;
+    }
+}
+
+.auth-page-container {
+    padding: 10px 4px;
+    max-width: 380px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.auth-header-logo {
+    margin-bottom: 8px;
+}
+
+.auth-error-alert {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+/* Profile Menu Styles */
+.profile-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+}
+
+.profile-dropdown-menu {
+    position: absolute;
+    top: 48px;
+    left: 0;
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+    border: 1px solid #E2E8F0;
+    padding: 8px 0;
+    width: 170px;
+    z-index: 90;
+    animation: fadeInMenu 0.15s ease-out;
+}
+
+@keyframes fadeInMenu {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-menu-header {
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+.profile-menu-item {
+    display: block;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.profile-menu-item:hover {
+    background-color: #F1F5F9;
 }
 
 /* App Loader */
