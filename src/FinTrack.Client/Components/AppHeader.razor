@@ -8,7 +8,10 @@
         <img src="images/avatar.svg" alt="User Profile" class="app-avatar" @onclick="ToggleProfileMenu" style="cursor: pointer;" />
         @if (isProfileMenuOpen)
         {
-            <div class="profile-dropdown-menu">
+            <!-- Invisible backdrop so tapping anywhere outside closes the profile options -->
+            <div class="profile-backdrop" @onclick="CloseProfileMenu"></div>
+
+            <div class="profile-dropdown-menu" @onclick:stopPropagation="true">
                 <div class="profile-menu-header">
                     <strong>@userName</strong>
                     <span style="font-size: 11px; color: var(--text-muted); display: block;">@userEmail</span>
@@ -23,7 +26,7 @@
         }
     </div>
     <div class="app-header-center">
-        <NavLink href="" style="text-decoration: none;">
+        <NavLink href="" style="text-decoration: none;" @onclick="CloseProfileMenu">
             <span class="app-brand-title">Fintrack</span>
         </NavLink>
     </div>
@@ -41,37 +44,6 @@
     </div>
 </header>
 
-<style>
-.profile-dropdown-menu {
-    position: absolute;
-    top: 48px;
-    left: 0;
-    background: #FFFFFF;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-    border: 1px solid #E2E8F0;
-    padding: 8px 0;
-    width: 170px;
-    z-index: 100;
-}
-.profile-menu-header {
-    padding: 6px 14px;
-    font-size: 13px;
-}
-.profile-menu-item {
-    display: block;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    text-decoration: none;
-    cursor: pointer;
-}
-.profile-menu-item:hover {
-    background-color: #F1F5F9;
-}
-</style>
-
 @code {
     private bool hasUnreadNotifications = true;
     private bool isProfileMenuOpen = false;
@@ -81,6 +53,7 @@
     protected override async Task OnInitializedAsync()
     {
         AuthService.OnAuthStateChanged += HandleAuthChanged;
+        Nav.LocationChanged += HandleLocationChanged;
         await LoadUserInfo();
     }
 
@@ -94,6 +67,15 @@
     private void HandleAuthChanged()
     {
         InvokeAsync(async () => await LoadUserInfo());
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (isProfileMenuOpen)
+        {
+            isProfileMenuOpen = false;
+            InvokeAsync(StateHasChanged);
+        }
     }
 
     private void ToggleProfileMenu()
@@ -121,5 +103,6 @@
     public void Dispose()
     {
         AuthService.OnAuthStateChanged -= HandleAuthChanged;
+        Nav.LocationChanged -= HandleLocationChanged;
     }
 }
