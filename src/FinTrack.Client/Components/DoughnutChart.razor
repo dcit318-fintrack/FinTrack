@@ -1,0 +1,29 @@
+@namespace FinTrack.Client.Components
+@inject IJSRuntime JS
+
+<div class="chart-container-donut">
+    <canvas id="@CanvasId"></canvas>
+</div>
+
+@code {
+    [Parameter] public string CanvasId { get; set; } = "spendingDonutCanvas";
+    [Parameter] public string[] Labels { get; set; } = Array.Empty<string>();
+    [Parameter] public decimal[] Data { get; set; } = Array.Empty<decimal>();
+    [Parameter] public string[]? Colors { get; set; }
+    [Parameter] public string TotalSpentFormatted { get; set; } = "$4,250";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Data != null && Data.Length > 0)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("finTrackCharts.renderSpendingDonutChart", CanvasId, Labels, Data, Colors, TotalSpentFormatted);
+            }
+            catch (Exception)
+            {
+                // Silently handle if prerendering or canvas not ready
+            }
+        }
+    }
+}

@@ -1,0 +1,159 @@
+@namespace FinTrack.Client.Components
+@inject IFinTrackApiService ApiService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="Close">
+        <div class="modal-sheet" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3 class="modal-title">@(IsEdit ? "Edit Transaction" : "New Transaction")</h3>
+                <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
+            </div>
+
+            <!-- Type toggle -->
+            <div class="type-toggle-group">
+                <button type="button" class="type-toggle-btn @(model.Type == "Expense" ? "active expense" : "")" 
+                        @onclick='() => model.Type = "Expense"'>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                        <polyline points="7 7 17 7 17 17"></polyline>
+                    </svg>
+                    Expense
+                </button>
+                <button type="button" class="type-toggle-btn @(model.Type == "Income" ? "active income" : "")" 
+                        @onclick='() => model.Type = "Income"'>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="7" y1="7" x2="17" y2="17"></line>
+                        <polyline points="17 7 17 17 7 17"></polyline>
+                    </svg>
+                    Income
+                </button>
+            </div>
+
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label class="form-label">Amount ($)</label>
+                    <input type="number" step="0.01" min="0.01" class="form-control-input" @bind-value="model.Amount" placeholder="0.00" required />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-control-select" @bind="model.CategoryId" required>
+                        <option value="@Guid.Empty">-- Select Category --</option>
+                        @foreach (var cat in categories)
+                        {
+                            <option value="@cat.Id">@cat.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control-input" @bind-value="model.Description" placeholder="e.g. Whole Foods, Starbucks, Salary" required />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="datetime-local" class="form-control-input" @bind-value="model.Date" required />
+                </div>
+
+                <button type="submit" class="btn-primary-action">
+                    @(IsEdit ? "Save Changes" : "Add Transaction")
+                </button>
+
+                @if (IsEdit)
+                {
+                    <button type="button" class="btn-danger-action" @onclick="HandleDelete">
+                        Delete Transaction
+                    </button>
+                }
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public TransactionDto? TransactionToEdit { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private bool IsEdit => TransactionToEdit != null;
+    private CreateTransactionRequest model = new() { Type = "Expense", Date = DateTime.Now };
+    private List<CategoryDto> categories = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen)
+        {
+            categories = await ApiService.GetCategoriesAsync();
+            if (TransactionToEdit != null)
+            {
+                model = new CreateTransactionRequest
+                {
+                    Amount = TransactionToEdit.Amount,
+                    Type = TransactionToEdit.Type,
+                    CategoryId = TransactionToEdit.CategoryId,
+                    Description = TransactionToEdit.Description,
+                    Date = TransactionToEdit.Date
+                };
+            }
+            else
+            {
+                model = new CreateTransactionRequest
+                {
+                    Amount = 0,
+                    Type = "Expense",
+                    CategoryId = categories.FirstOrDefault()?.Id ?? Guid.Empty,
+                    Description = string.Empty,
+                    Date = DateTime.Now
+                };
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (model.CategoryId == Guid.Empty && categories.Any())
+        {
+            model.CategoryId = categories.First().Id;
+        }
+
+        if (IsEdit && TransactionToEdit != null)
+        {
+            await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
+            {
+                Amount = model.Amount,
+                Type = model.Type,
+                CategoryId = model.CategoryId,
+                Description = model.Description,
+                Date = model.Date
+            });
+        }
+        else
+        {
+            await ApiService.CreateTransactionAsync(model);
+        }
+
+        await OnSaved.InvokeAsync();
+        await Close();
+    }
+
+    private async Task HandleDelete()
+    {
+        if (TransactionToEdit != null)
+        {
+            await ApiService.DeleteTransactionAsync(TransactionToEdit.Id);
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

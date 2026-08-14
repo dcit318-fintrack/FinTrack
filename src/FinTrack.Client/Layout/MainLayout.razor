@@ -1,16 +1,14 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@inherits LayoutComponentBase
+@namespace FinTrack.Client.Layout
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+<div class="app-viewport">
+    <div class="app-frame">
+        <AppHeader />
+        
+        <main class="app-main-content">
             @Body
-        </article>
-    </main>
+        </main>
+
+        <BottomNav />
+    </div>
 </div>

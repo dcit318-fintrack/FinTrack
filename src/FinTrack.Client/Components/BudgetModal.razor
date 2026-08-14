@@ -1,0 +1,124 @@
+@namespace FinTrack.Client.Components
+@inject IFinTrackApiService ApiService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="Close">
+        <div class="modal-sheet" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3 class="modal-title">@(IsEdit ? "Update Budget" : "New Category Budget")</h3>
+                <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
+            </div>
+
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                @if (!IsEdit)
+                {
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="form-control-select" @bind="model.CategoryId" required>
+                            <option value="@Guid.Empty">-- Select Category --</option>
+                            @foreach (var cat in categories.Where(c => c.Type == "Expense"))
+                            {
+                                <option value="@cat.Id">@cat.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label">Monthly Limit ($)</label>
+                    <input type="number" step="1" min="1" class="form-control-input" @bind-value="model.Limit" placeholder="500" required />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Month (YYYY-MM)</label>
+                    <input type="text" class="form-control-input" @bind-value="model.Month" placeholder="e.g. 2026-08" required />
+                </div>
+
+                <button type="submit" class="btn-primary-action">
+                    @(IsEdit ? "Save Budget" : "Create Budget")
+                </button>
+
+                @if (IsEdit)
+                {
+                    <button type="button" class="btn-danger-action" @onclick="HandleDelete">
+                        Delete Budget
+                    </button>
+                }
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public BudgetDto? BudgetToEdit { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private bool IsEdit => BudgetToEdit != null;
+    private CreateBudgetRequest model = new() { Month = DateTime.Today.ToString("yyyy-MM") };
+    private List<CategoryDto> categories = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen)
+        {
+            categories = await ApiService.GetCategoriesAsync();
+            if (BudgetToEdit != null)
+            {
+                model = new CreateBudgetRequest
+                {
+                    CategoryId = BudgetToEdit.CategoryId,
+                    Limit = BudgetToEdit.Limit,
+                    Month = BudgetToEdit.Month
+                };
+            }
+            else
+            {
+                model = new CreateBudgetRequest
+                {
+                    CategoryId = categories.FirstOrDefault(c => c.Type == "Expense")?.Id ?? Guid.Empty,
+                    Limit = 500,
+                    Month = DateTime.Today.ToString("yyyy-MM")
+                };
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (IsEdit && BudgetToEdit != null)
+        {
+            await ApiService.UpdateBudgetAsync(BudgetToEdit.Id, new UpdateBudgetRequest
+            {
+                Limit = model.Limit
+            });
+        }
+        else
+        {
+            await ApiService.CreateBudgetAsync(model);
+        }
+
+        await OnSaved.InvokeAsync();
+        await Close();
+    }
+
+    private async Task HandleDelete()
+    {
+        if (BudgetToEdit != null)
+        {
+            await ApiService.DeleteBudgetAsync(BudgetToEdit.Id);
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}
