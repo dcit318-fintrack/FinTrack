@@ -1045,9 +1045,24 @@ html, body {
 }
 
 /* Auth Styles */
+.auth-main-content {
+    padding: 40px 20px 30px 20px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+@media (min-width: 640px) {
+    .auth-main-content {
+        min-height: 840px;
+    }
+}
+
 .auth-page-container {
-    padding: 24px 4px;
+    padding: 10px 4px;
     max-width: 380px;
+    width: 100%;
     margin: 0 auto;
 }
 
