@@ -1,14 +1,48 @@
 @inherits LayoutComponentBase
 @namespace FinTrack.Client.Layout
+@inject NavigationManager Nav
+@implements IDisposable
 
 <div class="app-viewport">
     <div class="app-frame">
-        <AppHeader />
+        @if (!IsAuthPage)
+        {
+            <AppHeader />
+        }
         
-        <main class="app-main-content">
+        <main class="app-main-content @(IsAuthPage ? "auth-main-content" : "")">
             @Body
         </main>
 
-        <BottomNav />
+        @if (!IsAuthPage)
+        {
+            <BottomNav />
+        }
     </div>
 </div>
+
+@code {
+    private bool IsAuthPage
+    {
+        get
+        {
+            var path = Nav.ToBaseRelativePath(Nav.Uri).ToLowerInvariant();
+            return path.StartsWith("login") || path.StartsWith("register");
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= HandleLocationChanged;
+    }
+}
