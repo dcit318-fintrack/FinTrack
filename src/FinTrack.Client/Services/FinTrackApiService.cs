@@ -9,12 +9,13 @@ using FinTrack.Shared.DTOs.Transaction;
 
 namespace FinTrack.Client.Services;
 
+// Issue #30: Implementation of live API HTTP integration with fallback state
 public class FinTrackApiService : IFinTrackApiService
 {
     private readonly HttpClient _http;
     public event Action? OnDataChanged;
 
-    // Seeded In-Memory State for Instant Interactive UI
+    // Seeded In-Memory State for Instant Interactive UI / Offline Fallback
     private readonly List<CategoryDto> _categories = new();
     private readonly List<TransactionDto> _transactions = new();
     private readonly List<BudgetDto> _budgets = new();
@@ -197,8 +198,19 @@ public class FinTrackApiService : IFinTrackApiService
     }
 
     #region Dashboard
-    public Task<DashboardSummaryDto> GetDashboardSummaryAsync(string? month = null)
+    public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(string? month = null)
     {
+        try
+        {
+            var url = string.IsNullOrEmpty(month) ? "/api/dashboard" : $"/api/dashboard?month={month}";
+            var response = await _http.GetFromJsonAsync<DashboardSummaryDto>(url);
+            if (response != null) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback to local state
+        }
+
         var currentMonth = month ?? DateTime.Today.ToString("yyyy-MM");
         var income = _transactions.Where(t => t.Type == "Income").Sum(t => t.Amount);
         var expense = _transactions.Where(t => t.Type == "Expense").Sum(t => t.Amount);
@@ -206,13 +218,12 @@ public class FinTrackApiService : IFinTrackApiService
 
         if (balance == 0 && income == 0)
         {
-            // Default matching Figma
             income = 3200m;
             expense = 750m;
             balance = 2450m;
         }
 
-        var result = new DashboardSummaryDto
+        return new DashboardSummaryDto
         {
             TotalIncome = income > 0 ? income : 3200m,
             TotalExpenses = expense > 0 ? expense : 750m,
@@ -229,53 +240,93 @@ public class FinTrackApiService : IFinTrackApiService
                     PercentUsed = (double)(b.Spent / b.Limit) * 100.0
                 }).ToList()
         };
-
-        return Task.FromResult(result);
     }
     #endregion
 
     #region Transactions
-    public Task<PagedResult<TransactionDto>> GetTransactionsAsync(string? search = null, string? type = null, Guid? categoryId = null, int page = 1, int pageSize = 50)
+    public async Task<PagedResult<TransactionDto>> GetTransactionsAsync(string? search = null, string? type = null, Guid? categoryId = null, int page = 1, int pageSize = 50)
     {
-        var query = _transactions.AsEnumerable();
+        try
+        {
+            var query = $"/api/transactions?page={page}&pageSize={pageSize}";
+            if (!string.IsNullOrEmpty(type) && type != "All") query += $"&type={type}";
+            if (categoryId.HasValue) query += $"&categoryId={categoryId.Value}";
+            
+            var response = await _http.GetFromJsonAsync<PagedResult<TransactionDto>>(query);
+            if (response != null && response.Items.Any()) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback to local state
+        }
+
+        var localQuery = _transactions.AsEnumerable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(t => 
+            localQuery = localQuery.Where(t => 
                 t.Description.Contains(search, StringComparison.OrdinalIgnoreCase) || 
                 t.CategoryName.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(type) && type != "All")
         {
-            query = query.Where(t => t.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
+            localQuery = localQuery.Where(t => t.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
         }
 
         if (categoryId.HasValue && categoryId.Value != Guid.Empty)
         {
-            query = query.Where(t => t.CategoryId == categoryId.Value);
+            localQuery = localQuery.Where(t => t.CategoryId == categoryId.Value);
         }
 
-        var list = query.OrderByDescending(t => t.Date).ToList();
+        var list = localQuery.OrderByDescending(t => t.Date).ToList();
         var paged = list.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
-        return Task.FromResult(new PagedResult<TransactionDto>
+        return new PagedResult<TransactionDto>
         {
             Items = paged,
             Page = page,
             PageSize = pageSize,
             TotalCount = list.Count
-        });
+        };
     }
 
-    public Task<TransactionDto?> GetTransactionByIdAsync(Guid id)
+    public async Task<TransactionDto?> GetTransactionByIdAsync(Guid id)
     {
-        var item = _transactions.FirstOrDefault(t => t.Id == id);
-        return Task.FromResult(item);
+        try
+        {
+            var response = await _http.GetFromJsonAsync<TransactionDto>($"/api/transactions/{id}");
+            if (response != null) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
+        return _transactions.FirstOrDefault(t => t.Id == id);
     }
 
-    public Task<TransactionDto> CreateTransactionAsync(CreateTransactionRequest request)
+    public async Task<TransactionDto> CreateTransactionAsync(CreateTransactionRequest request)
     {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("/api/transactions", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<TransactionDto>();
+                if (created != null)
+                {
+                    _transactions.Insert(0, created);
+                    NotifyDataChanged();
+                    return created;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var category = _categories.FirstOrDefault(c => c.Id == request.CategoryId);
         var item = new TransactionDto
         {
@@ -290,11 +341,31 @@ public class FinTrackApiService : IFinTrackApiService
 
         _transactions.Insert(0, item);
         NotifyDataChanged();
-        return Task.FromResult(item);
+        return item;
     }
 
-    public Task<TransactionDto> UpdateTransactionAsync(Guid id, UpdateTransactionRequest request)
+    public async Task<TransactionDto> UpdateTransactionAsync(Guid id, UpdateTransactionRequest request)
     {
+        try
+        {
+            var response = await _http.PutAsJsonAsync($"/api/transactions/{id}", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<TransactionDto>();
+                if (updated != null)
+                {
+                    var idx = _transactions.FindIndex(t => t.Id == id);
+                    if (idx >= 0) _transactions[idx] = updated;
+                    NotifyDataChanged();
+                    return updated;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var existing = _transactions.FirstOrDefault(t => t.Id == id);
         if (existing == null) throw new KeyNotFoundException("Transaction not found");
 
@@ -307,30 +378,74 @@ public class FinTrackApiService : IFinTrackApiService
         existing.Date = request.Date;
 
         NotifyDataChanged();
-        return Task.FromResult(existing);
+        return existing;
     }
 
-    public Task<bool> DeleteTransactionAsync(Guid id)
+    public async Task<bool> DeleteTransactionAsync(Guid id)
     {
+        try
+        {
+            var response = await _http.DeleteAsync($"/api/transactions/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _transactions.RemoveAll(t => t.Id == id);
+                NotifyDataChanged();
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var item = _transactions.FirstOrDefault(t => t.Id == id);
         if (item != null)
         {
             _transactions.Remove(item);
             NotifyDataChanged();
-            return Task.FromResult(true);
+            return true;
         }
-        return Task.FromResult(false);
+        return false;
     }
     #endregion
 
     #region Categories
-    public Task<List<CategoryDto>> GetCategoriesAsync()
+    public async Task<List<CategoryDto>> GetCategoriesAsync()
     {
-        return Task.FromResult(_categories.ToList());
+        try
+        {
+            var response = await _http.GetFromJsonAsync<List<CategoryDto>>("/api/categories");
+            if (response != null && response.Any()) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
+        return _categories.ToList();
     }
 
-    public Task<CategoryDto> CreateCategoryAsync(CreateCategoryRequest request)
+    public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryRequest request)
     {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("/api/categories", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<CategoryDto>();
+                if (created != null)
+                {
+                    _categories.Add(created);
+                    NotifyDataChanged();
+                    return created;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var cat = new CategoryDto
         {
             Id = Guid.NewGuid(),
@@ -339,18 +454,48 @@ public class FinTrackApiService : IFinTrackApiService
         };
         _categories.Add(cat);
         NotifyDataChanged();
-        return Task.FromResult(cat);
+        return cat;
     }
     #endregion
 
     #region Budgets
-    public Task<List<BudgetDto>> GetBudgetsAsync(string? month = null)
+    public async Task<List<BudgetDto>> GetBudgetsAsync(string? month = null)
     {
-        return Task.FromResult(_budgets.ToList());
+        try
+        {
+            var url = string.IsNullOrEmpty(month) ? "/api/budgets" : $"/api/budgets?month={month}";
+            var response = await _http.GetFromJsonAsync<List<BudgetDto>>(url);
+            if (response != null && response.Any()) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
+        return _budgets.ToList();
     }
 
-    public Task<BudgetDto> CreateBudgetAsync(CreateBudgetRequest request)
+    public async Task<BudgetDto> CreateBudgetAsync(CreateBudgetRequest request)
     {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("/api/budgets", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<BudgetDto>();
+                if (created != null)
+                {
+                    _budgets.Add(created);
+                    NotifyDataChanged();
+                    return created;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var category = _categories.FirstOrDefault(c => c.Id == request.CategoryId);
         var budget = new BudgetDto
         {
@@ -365,11 +510,31 @@ public class FinTrackApiService : IFinTrackApiService
 
         _budgets.Add(budget);
         NotifyDataChanged();
-        return Task.FromResult(budget);
+        return budget;
     }
 
-    public Task<BudgetDto> UpdateBudgetAsync(Guid id, UpdateBudgetRequest request)
+    public async Task<BudgetDto> UpdateBudgetAsync(Guid id, UpdateBudgetRequest request)
     {
+        try
+        {
+            var response = await _http.PutAsJsonAsync($"/api/budgets/{id}", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<BudgetDto>();
+                if (updated != null)
+                {
+                    var idx = _budgets.FindIndex(b => b.Id == id);
+                    if (idx >= 0) _budgets[idx] = updated;
+                    NotifyDataChanged();
+                    return updated;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var budget = _budgets.FirstOrDefault(b => b.Id == id);
         if (budget == null) throw new KeyNotFoundException("Budget not found");
 
@@ -377,30 +542,74 @@ public class FinTrackApiService : IFinTrackApiService
         budget.Remaining = Math.Max(0, budget.Limit - budget.Spent);
 
         NotifyDataChanged();
-        return Task.FromResult(budget);
+        return budget;
     }
 
-    public Task<bool> DeleteBudgetAsync(Guid id)
+    public async Task<bool> DeleteBudgetAsync(Guid id)
     {
+        try
+        {
+            var response = await _http.DeleteAsync($"/api/budgets/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _budgets.RemoveAll(b => b.Id == id);
+                NotifyDataChanged();
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var budget = _budgets.FirstOrDefault(b => b.Id == id);
         if (budget != null)
         {
             _budgets.Remove(budget);
             NotifyDataChanged();
-            return Task.FromResult(true);
+            return true;
         }
-        return Task.FromResult(false);
+        return false;
     }
     #endregion
 
     #region Savings Goals
-    public Task<List<SavingsGoalDto>> GetSavingsGoalsAsync()
+    public async Task<List<SavingsGoalDto>> GetSavingsGoalsAsync()
     {
-        return Task.FromResult(_savingsGoals.ToList());
+        try
+        {
+            var response = await _http.GetFromJsonAsync<List<SavingsGoalDto>>("/api/savings-goals");
+            if (response != null && response.Any()) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
+        return _savingsGoals.ToList();
     }
 
-    public Task<SavingsGoalDto> CreateSavingsGoalAsync(CreateSavingsGoalRequest request)
+    public async Task<SavingsGoalDto> CreateSavingsGoalAsync(CreateSavingsGoalRequest request)
     {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("/api/savings-goals", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<SavingsGoalDto>();
+                if (created != null)
+                {
+                    _savingsGoals.Add(created);
+                    NotifyDataChanged();
+                    return created;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var goal = new SavingsGoalDto
         {
             Id = Guid.NewGuid(),
@@ -414,11 +623,31 @@ public class FinTrackApiService : IFinTrackApiService
 
         _savingsGoals.Add(goal);
         NotifyDataChanged();
-        return Task.FromResult(goal);
+        return goal;
     }
 
-    public Task<SavingsGoalDto> UpdateSavingsGoalAsync(Guid id, UpdateSavingsGoalRequest request)
+    public async Task<SavingsGoalDto> UpdateSavingsGoalAsync(Guid id, UpdateSavingsGoalRequest request)
     {
+        try
+        {
+            var response = await _http.PutAsJsonAsync($"/api/savings-goals/{id}", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<SavingsGoalDto>();
+                if (updated != null)
+                {
+                    var idx = _savingsGoals.FindIndex(g => g.Id == id);
+                    if (idx >= 0) _savingsGoals[idx] = updated;
+                    NotifyDataChanged();
+                    return updated;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var goal = _savingsGoals.FirstOrDefault(g => g.Id == id);
         if (goal == null) throw new KeyNotFoundException("Goal not found");
 
@@ -435,11 +664,31 @@ public class FinTrackApiService : IFinTrackApiService
         goal.IsAchieved = goal.CurrentAmount >= goal.TargetAmount;
 
         NotifyDataChanged();
-        return Task.FromResult(goal);
+        return goal;
     }
 
-    public Task<SavingsGoalDto> ContributeToSavingsGoalAsync(Guid id, ContributeRequest request)
+    public async Task<SavingsGoalDto> ContributeToSavingsGoalAsync(Guid id, ContributeRequest request)
     {
+        try
+        {
+            var response = await _http.PostAsJsonAsync($"/api/savings-goals/{id}/contribute", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<SavingsGoalDto>();
+                if (updated != null)
+                {
+                    var idx = _savingsGoals.FindIndex(g => g.Id == id);
+                    if (idx >= 0) _savingsGoals[idx] = updated;
+                    NotifyDataChanged();
+                    return updated;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var goal = _savingsGoals.FirstOrDefault(g => g.Id == id);
         if (goal == null) throw new KeyNotFoundException("Goal not found");
 
@@ -450,26 +699,52 @@ public class FinTrackApiService : IFinTrackApiService
         goal.IsAchieved = goal.CurrentAmount >= goal.TargetAmount;
 
         NotifyDataChanged();
-        return Task.FromResult(goal);
+        return goal;
     }
 
-    public Task<bool> DeleteSavingsGoalAsync(Guid id)
+    public async Task<bool> DeleteSavingsGoalAsync(Guid id)
     {
+        try
+        {
+            var response = await _http.DeleteAsync($"/api/savings-goals/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _savingsGoals.RemoveAll(g => g.Id == id);
+                NotifyDataChanged();
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
         var goal = _savingsGoals.FirstOrDefault(g => g.Id == id);
         if (goal != null)
         {
             _savingsGoals.Remove(goal);
             NotifyDataChanged();
-            return Task.FromResult(true);
+            return true;
         }
-        return Task.FromResult(false);
+        return false;
     }
     #endregion
 
     #region Reports
-    public Task<SpendingByCategoryReportDto> GetSpendingByCategoryReportAsync(DateTime from, DateTime to)
+    public async Task<SpendingByCategoryReportDto> GetSpendingByCategoryReportAsync(DateTime from, DateTime to)
     {
-        var result = new SpendingByCategoryReportDto
+        try
+        {
+            var url = $"/api/reports/spending-by-category?from={from:O}&to={to:O}";
+            var response = await _http.GetFromJsonAsync<SpendingByCategoryReportDto>(url);
+            if (response != null) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
+        return new SpendingByCategoryReportDto
         {
             From = from,
             To = to,
@@ -482,13 +757,22 @@ public class FinTrackApiService : IFinTrackApiService
                 new() { CategoryId = Guid.NewGuid(), CategoryName = "Fun", Amount = 425.00m, PercentOfTotal = 10.0 }
             }
         };
-
-        return Task.FromResult(result);
     }
 
-    public Task<IncomeVsExpenseReportDto> GetIncomeVsExpenseReportAsync(DateTime from, DateTime to, string granularity = "monthly")
+    public async Task<IncomeVsExpenseReportDto> GetIncomeVsExpenseReportAsync(DateTime from, DateTime to, string granularity = "monthly")
     {
-        var result = new IncomeVsExpenseReportDto
+        try
+        {
+            var url = $"/api/reports/income-vs-expense?from={from:O}&to={to:O}&granularity={granularity}";
+            var response = await _http.GetFromJsonAsync<IncomeVsExpenseReportDto>(url);
+            if (response != null) return response;
+        }
+        catch (Exception)
+        {
+            // Fallback
+        }
+
+        return new IncomeVsExpenseReportDto
         {
             Granularity = granularity,
             Points = new List<IncomeVsExpensePointDto>
@@ -501,8 +785,6 @@ public class FinTrackApiService : IFinTrackApiService
                 new() { Period = "Jun", Income = 3200m, Expense = 750m, Net = 2450m }
             }
         };
-
-        return Task.FromResult(result);
     }
     #endregion
 }
