@@ -21,7 +21,7 @@ public class ReportService : IReportService
         var expenseTransactions = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId &&
-                        t.Type.ToLower() == "expense" &&
+                        t.Type == "Expense" &&
                         t.Date >= from &&
                         t.Date <= to)
             .Include(t => t.Category)
@@ -80,8 +80,8 @@ public class ReportService : IReportService
                 var periodStr = day.ToString("yyyy-MM-dd");
                 var dayTx = transactions.Where(t => t.Date.Date == day).ToList();
 
-                var income = dayTx.Where(t => t.Type.Equals("Income", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
-                var expense = dayTx.Where(t => t.Type.Equals("Expense", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
+                var income = dayTx.Where(t => t.Type == "Income").Sum(t => t.Amount);
+                var expense = dayTx.Where(t => t.Type == "Expense").Sum(t => t.Amount);
 
                 points.Add(new IncomeVsExpensePointDto
                 {
@@ -92,9 +92,31 @@ public class ReportService : IReportService
                 });
             }
         }
+        else if (granularity == "weekly")
+        {
+            var current = from.Date;
+            while (current <= to.Date)
+            {
+                var weekEnd = current.AddDays(6) > to.Date ? to.Date : current.AddDays(6);
+                var periodStr = $"{current:yyyy-MM-dd}..{weekEnd:yyyy-MM-dd}";
+                var weekTx = transactions.Where(t => t.Date.Date >= current && t.Date.Date <= weekEnd).ToList();
+
+                var income = weekTx.Where(t => t.Type == "Income").Sum(t => t.Amount);
+                var expense = weekTx.Where(t => t.Type == "Expense").Sum(t => t.Amount);
+
+                points.Add(new IncomeVsExpensePointDto
+                {
+                    Period = periodStr,
+                    Income = income,
+                    Expense = expense,
+                    Net = income - expense
+                });
+
+                current = current.AddDays(7);
+            }
+        }
         else
         {
-            // Monthly aggregation (default)
             var current = new DateTime(from.Year, from.Month, 1);
             var end = new DateTime(to.Year, to.Month, 1);
 
@@ -106,8 +128,8 @@ public class ReportService : IReportService
 
                 var monthTx = transactions.Where(t => t.Date >= monthStart && t.Date <= monthEnd).ToList();
 
-                var income = monthTx.Where(t => t.Type.Equals("Income", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
-                var expense = monthTx.Where(t => t.Type.Equals("Expense", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
+                var income = monthTx.Where(t => t.Type == "Income").Sum(t => t.Amount);
+                var expense = monthTx.Where(t => t.Type == "Expense").Sum(t => t.Amount);
 
                 points.Add(new IncomeVsExpensePointDto
                 {
