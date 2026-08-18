@@ -1,5 +1,6 @@
 using FinTrack.Server.Data;
 using FinTrack.Server.Models;
+using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Transaction;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,8 +24,8 @@ public class TransactionService : ITransactionService
         int page = 1,
         int pageSize = 25)
     {
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize is < 1 or > 100 ? 25 : pageSize;
+        page = page <= 0 ? 1 : page;
+        pageSize = pageSize <= 0 ? 25 : pageSize;
 
         var query = _dbContext.Transactions
             .AsNoTracking()
@@ -72,9 +73,9 @@ public class TransactionService : ITransactionService
         return new PagedResult<TransactionDto>
         {
             Items = items,
+            TotalCount = totalCount,
             Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount
+            PageSize = pageSize
         };
     }
 
@@ -100,7 +101,10 @@ public class TransactionService : ITransactionService
         Guid userId,
         CreateTransactionRequest request)
     {
-        var category = await _dbContext.Categories.FindAsync(request.CategoryId);
+        var category = request.CategoryId.HasValue
+            ? await _dbContext.Categories.FindAsync(request.CategoryId.Value)
+            : null;
+
         if (category == null)
         {
             var errors = new Dictionary<string, string[]>
@@ -132,9 +136,9 @@ public class TransactionService : ITransactionService
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            CategoryId = request.CategoryId,
+            CategoryId = request.CategoryId!.Value,
             Amount = Math.Round(request.Amount, 2),
-            Type = category.Type, // Enforce exact category type (Income or Expense)
+            Type = category.Type,
             Description = request.Description ?? string.Empty,
             Date = request.Date,
             CreatedAt = DateTime.UtcNow
@@ -170,7 +174,10 @@ public class TransactionService : ITransactionService
             return (false, null, "Transaction not found.", null);
         }
 
-        var category = await _dbContext.Categories.FindAsync(request.CategoryId);
+        var category = request.CategoryId.HasValue
+            ? await _dbContext.Categories.FindAsync(request.CategoryId.Value)
+            : null;
+
         if (category == null)
         {
             var errors = new Dictionary<string, string[]>
@@ -191,7 +198,7 @@ public class TransactionService : ITransactionService
 
         transaction.Amount = Math.Round(request.Amount, 2);
         transaction.Type = category.Type;
-        transaction.CategoryId = request.CategoryId;
+        transaction.CategoryId = request.CategoryId!.Value;
         transaction.Description = request.Description ?? string.Empty;
         transaction.Date = request.Date;
 
