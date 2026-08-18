@@ -10,8 +10,8 @@ public class UpdateTransactionRequest
     [Required]
     public string Type { get; set; } = string.Empty;
 
-    [Required]
-    public Guid CategoryId { get; set; }
+    [Required(ErrorMessage = "CategoryId is required.")]
+    public Guid? CategoryId { get; set; }
 
     [MaxLength(200)]
     public string Description { get; set; } = string.Empty;

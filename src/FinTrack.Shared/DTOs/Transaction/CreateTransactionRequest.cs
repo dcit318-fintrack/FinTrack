@@ -10,8 +10,8 @@ public class CreateTransactionRequest
     [Required]
     public string Type { get; set; } = string.Empty; // "Income" or "Expense"
 
-    [Required]
-    public Guid CategoryId { get; set; }
+    [Required(ErrorMessage = "CategoryId is required.")]
+    public Guid? CategoryId { get; set; }
 
     [MaxLength(200)]
     public string Description { get; set; } = string.Empty;
