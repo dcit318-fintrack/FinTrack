@@ -17,76 +17,82 @@
                 @onclick='() => SelectRange("ytd")'>YTD</button>
     </div>
 
-    <!-- Spending Patterns Card -->
-    <div class="fintrack-card">
-        <h2 class="card-title" style="font-size: 18px; margin-bottom: 14px;">Spending Patterns</h2>
-        
-        <DoughnutChart CanvasId="spendingDonutChartCanvas"
-                       Labels="@donutLabels"
-                       Data="@donutData"
-                       Colors="@donutColors"
-                       TotalSpentFormatted="@("$" + spendingReport.TotalSpent.ToString("N0"))" />
+    <div class="reports-page-grid">
+        <div class="reports-col">
+            <!-- Spending Patterns Card -->
+            <div class="fintrack-card">
+                <h2 class="card-title" style="font-size: 18px; margin-bottom: 14px;">Spending Patterns</h2>
+                
+                <DoughnutChart CanvasId="spendingDonutChartCanvas"
+                               Labels="@donutLabels"
+                               Data="@donutData"
+                               Colors="@donutColors"
+                               TotalSpentFormatted="@("GH₵" + spendingReport.TotalSpent.ToString("N0"))" />
 
-        <div class="chart-legend-grid">
-            @foreach (var item in spendingReport.Categories)
-            {
-                <div class="legend-item">
-                    <div class="legend-left">
-                        <span class="legend-dot" style="background-color: @GetCategoryDotColor(item.CategoryName)"></span>
-                        <span>@item.CategoryName</span>
+                <div class="chart-legend-grid">
+                    @foreach (var item in spendingReport.Categories)
+                    {
+                        <div class="legend-item">
+                            <div class="legend-left">
+                                <span class="legend-dot" style="background-color: @GetCategoryDotColor(item.CategoryName)"></span>
+                                <span>@item.CategoryName</span>
+                            </div>
+                            <span class="legend-percent">@item.PercentOfTotal.ToString("0")%</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="reports-col">
+            <!-- Income vs Expenses Card -->
+            <div class="fintrack-card">
+                <div class="card-header-row" style="margin-bottom: 12px;">
+                    <h2 class="card-title" style="font-size: 18px; margin: 0;">Income vs Expenses</h2>
+                    <div class="chart-header-legend">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="legend-dot" style="background-color: #047857;"></span>
+                            <span style="color: var(--text-secondary); font-size: 12px;">Income</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="legend-dot" style="background-color: #052E36;"></span>
+                            <span style="color: var(--text-secondary); font-size: 12px;">Expenses</span>
+                        </div>
                     </div>
-                    <span class="legend-percent">@item.PercentOfTotal.ToString("0")%</span>
                 </div>
-            }
-        </div>
-    </div>
 
-    <!-- Income vs Expenses Card -->
-    <div class="fintrack-card">
-        <div class="card-header-row" style="margin-bottom: 12px;">
-            <h2 class="card-title" style="font-size: 18px; margin: 0;">Income vs Expenses</h2>
-            <div class="chart-header-legend">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span class="legend-dot" style="background-color: #047857;"></span>
-                    <span style="color: var(--text-secondary); font-size: 12px;">Income</span>
+                <IncomeExpenseChart CanvasId="incomeExpenseChartCanvas"
+                                    Periods="@incomeExpensePeriods"
+                                    IncomeData="@incomeData"
+                                    ExpenseData="@expenseData" />
+            </div>
+
+            <!-- Top Spending Category Card -->
+            <div class="top-category-card">
+                <div class="top-cat-badge-label">TOP SPENDING CATEGORY</div>
+                <div class="top-cat-body">
+                    <div class="category-icon-circle slate" style="width: 48px; height: 48px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2">
+                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="top-cat-title">Rent</div>
+                        <div class="top-cat-desc"><strong>45%</strong> of total spending this period.</div>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span class="legend-dot" style="background-color: #052E36;"></span>
-                    <span style="color: var(--text-secondary); font-size: 12px;">Expenses</span>
+
+                <div class="top-cat-footer">
+                    <span class="top-cat-footnote">Consistently your highest expense.</span>
+                    <NavLink href="transactions" class="top-cat-link">
+                        View Details
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </NavLink>
                 </div>
             </div>
-        </div>
-
-        <IncomeExpenseChart CanvasId="incomeExpenseChartCanvas"
-                            Periods="@incomeExpensePeriods"
-                            IncomeData="@incomeData"
-                            ExpenseData="@expenseData" />
-    </div>
-
-    <!-- Top Spending Category Card -->
-    <div class="top-category-card">
-        <div class="top-cat-badge-label">TOP SPENDING CATEGORY</div>
-        <div class="top-cat-body">
-            <div class="category-icon-circle slate" style="width: 48px; height: 48px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2">
-                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                </svg>
-            </div>
-            <div>
-                <div class="top-cat-title">Rent</div>
-                <div class="top-cat-desc"><strong>45%</strong> of total spending this period.</div>
-            </div>
-        </div>
-
-        <div class="top-cat-footer">
-            <span class="top-cat-footnote">Consistently your highest expense.</span>
-            <NavLink href="transactions" class="top-cat-link">
-                View Details
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-            </NavLink>
         </div>
     </div>
 </div>

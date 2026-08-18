@@ -6,97 +6,103 @@
 @implements IDisposable
 
 <div class="dashboard-page">
-    <!-- Balance & Stats Card -->
-    <div class="fintrack-card">
-        <div class="balance-card-label">Total Balance</div>
-        <div class="balance-card-amount">@summary.Balance.ToString("C2")</div>
+    <div class="dashboard-grid">
+        <div class="dashboard-main-col">
+            <!-- Balance & Stats Card -->
+            <div class="fintrack-card">
+                <div class="balance-card-label">Total Balance</div>
+                <div class="balance-card-amount">@summary.Balance.ToString("C2")</div>
 
-        <div class="stats-grid-2">
-            <div class="stat-box">
-                <div class="stat-box-header">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <polyline points="19 12 12 19 5 12"></polyline>
-                    </svg>
-                    <span class="stat-box-label">Monthly<br />Income</span>
+                <div class="stats-grid-2">
+                    <div class="stat-box">
+                        <div class="stat-box-header">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <polyline points="19 12 12 19 5 12"></polyline>
+                            </svg>
+                            <span class="stat-box-label">Monthly<br />Income</span>
+                        </div>
+                        <div class="stat-box-value">@summary.TotalIncome.ToString("C0")</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-box-header">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="19" x2="12" y2="5"></line>
+                                <polyline points="5 12 12 5 19 12"></polyline>
+                            </svg>
+                            <span class="stat-box-label">Monthly<br />Expenses</span>
+                        </div>
+                        <div class="stat-box-value">@summary.TotalExpenses.ToString("C0")</div>
+                    </div>
                 </div>
-                <div class="stat-box-value">@summary.TotalIncome.ToString("C0")</div>
             </div>
 
-            <div class="stat-box">
-                <div class="stat-box-header">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="19" x2="12" y2="5"></line>
-                        <polyline points="5 12 12 5 19 12"></polyline>
-                    </svg>
-                    <span class="stat-box-label">Monthly<br />Expenses</span>
-                </div>
-                <div class="stat-box-value">@summary.TotalExpenses.ToString("C0")</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Transactions Card -->
-    <div class="fintrack-card">
-        <div class="card-header-row">
-            <h2 class="card-title">Recent Transactions</h2>
-            <NavLink href="transactions" class="card-action-link">See all</NavLink>
-        </div>
-
-        <div class="transaction-list">
-            @if (summary.RecentTransactions.Any())
+            <!-- Active Savings Goal Card -->
+            @if (activeGoal != null)
             {
-                @foreach (var tx in summary.RecentTransactions.Take(3))
-                {
-                    <div class="transaction-item" @onclick="() => OpenEditTx(tx)">
-                        <div class="transaction-left">
-                            <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
-                            <div class="transaction-info">
-                                <span class="transaction-name">@tx.Description</span>
-                                <span class="transaction-subtext">@FormatTxDate(tx.Date)</span>
+                <div class="savings-summary-card" @onclick="NavigateToBudgets" style="cursor: pointer;">
+                    <div class="savings-summary-top">
+                        <div class="goal-badge-wrap">
+                            <div class="category-icon-circle slate" style="width: 38px; height: 38px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                                </svg>
                             </div>
+                            <span class="goal-name">@activeGoal.Name</span>
                         </div>
-                        <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
-                            @(tx.Type == "Income" ? "+" : "-")@tx.Amount.ToString("C2")
-                        </div>
+                        <span class="goal-percent-text">@activeGoal.ProgressPercent.ToString("0")%</span>
                     </div>
-                }
+
+                    <div class="progress-track">
+                        <div class="progress-fill green" style="width: @Math.Min(100, activeGoal.ProgressPercent)%"></div>
+                    </div>
+
+                    <div class="savings-footer-stats">
+                        <span>@activeGoal.CurrentAmount.ToString("C0") saved</span>
+                        <span>Goal: @activeGoal.TargetAmount.ToString("C0")</span>
+                    </div>
+                </div>
             }
-            else
-            {
-                <p class="text-muted" style="font-size: 14px; text-align: center; padding: 12px 0;">No transactions yet.</p>
-            }
+        </div>
+
+        <div class="dashboard-side-col">
+            <!-- Recent Transactions Card -->
+            <div class="fintrack-card">
+                <div class="card-header-row">
+                    <h2 class="card-title">Recent Transactions</h2>
+                    <NavLink href="transactions" class="card-action-link">See all</NavLink>
+                </div>
+
+                <div class="transaction-list">
+                    @if (summary.RecentTransactions.Any())
+                    {
+                        @foreach (var tx in summary.RecentTransactions.Take(5))
+                        {
+                            <div class="transaction-item" @onclick="() => OpenEditTx(tx)">
+                                <div class="transaction-left">
+                                    <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
+                                    <div class="transaction-info">
+                                        <span class="transaction-name">@tx.Description</span>
+                                        <span class="transaction-subtext">@FormatTxDate(tx.Date)</span>
+                                    </div>
+                                </div>
+                                <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
+                                    @(tx.Type == "Income" ? "+" : "-")@tx.Amount.ToString("C2")
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted" style="font-size: 14px; text-align: center; padding: 12px 0;">No transactions yet.</p>
+                    }
+                </div>
+            </div>
         </div>
     </div>
-
-    <!-- Active Savings Goal Card -->
-    @if (activeGoal != null)
-    {
-        <div class="savings-summary-card" @onclick="NavigateToBudgets" style="cursor: pointer;">
-            <div class="savings-summary-top">
-                <div class="goal-badge-wrap">
-                    <div class="category-icon-circle slate" style="width: 38px; height: 38px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                    </div>
-                    <span class="goal-name">@activeGoal.Name</span>
-                </div>
-                <span class="goal-percent-text">@activeGoal.ProgressPercent.ToString("0")%</span>
-            </div>
-
-            <div class="progress-track">
-                <div class="progress-fill green" style="width: @Math.Min(100, activeGoal.ProgressPercent)%"></div>
-            </div>
-
-            <div class="savings-footer-stats">
-                <span>@activeGoal.CurrentAmount.ToString("C0") saved</span>
-                <span>Goal: @activeGoal.TargetAmount.ToString("C0")</span>
-            </div>
-        </div>
-    }
 </div>
 
 <TransactionModal @bind-IsOpen="isTxModalOpen" TransactionToEdit="selectedTx" OnSaved="LoadDashboardData" />

@@ -30,10 +30,10 @@ window.finTrackCharts = {
                 ctx.textBaseline = 'middle';
                 ctx.fillText('Total Spent', centerX, centerY - 14);
 
-                // Main total: "$4,250"
+                // Main total: "GH₵4,250"
                 ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
                 ctx.fillStyle = '#0F172A';
-                ctx.fillText(totalSpentFormatted || '$0.00', centerX, centerY + 14);
+                ctx.fillText(totalSpentFormatted || 'GH₵0.00', centerX, centerY + 14);
 
                 ctx.restore();
             }
@@ -70,7 +70,7 @@ window.finTrackCharts = {
                         callbacks: {
                             label: function (context) {
                                 const value = context.parsed;
-                                return ` $${value.toLocaleString()}`;
+                                return ` GH₵${value.toLocaleString()}`;
                             }
                         }
                     }
@@ -145,9 +145,9 @@ window.finTrackCharts = {
                             },
                             callback: function(value) {
                                 if (value >= 1000) {
-                                    return '$' + (value / 1000) + 'k';
+                                    return 'GH₵' + (value / 1000) + 'k';
                                 }
-                                return '$' + value;
+                                return 'GH₵' + value;
                             }
                         },
                         border: {
