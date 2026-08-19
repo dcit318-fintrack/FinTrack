@@ -4,83 +4,89 @@
 @implements IDisposable
 
 <div class="budgets-page">
-    <!-- Monthly Budgets Section -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
-        <h1 class="section-title" style="margin: 0;">Monthly Budgets</h1>
-        <button class="icon-button" @onclick="OpenAddBudget" title="Add Monthly Budget" style="background: #E2E8F0; width: 34px; height: 34px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        </button>
-    </div>
+    <div class="budgets-page-grid">
+        <div class="budgets-column">
+            <!-- Monthly Budgets Section -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <h1 class="section-title" style="margin: 0;">Monthly Budgets</h1>
+                <button class="icon-button" @onclick="OpenAddBudget" title="Add Monthly Budget" style="background: #E2E8F0; width: 34px; height: 34px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
 
-    @foreach (var b in budgets)
-    {
-        var percent = b.Limit > 0 ? Math.Round((double)(b.Spent / b.Limit) * 100.0, 0) : 0;
-        <div class="budget-card" @onclick="() => OpenEditBudget(b)" style="cursor: pointer;">
-            <div class="budget-header">
-                <div class="budget-category-info">
-                    <div class="category-icon-circle mint" style="width: 40px; height: 40px;">
-                        @((MarkupString)GetBudgetCategoryIcon(b.CategoryName))
+            @foreach (var b in budgets)
+            {
+                var percent = b.Limit > 0 ? Math.Round((double)(b.Spent / b.Limit) * 100.0, 0) : 0;
+                <div class="budget-card" @onclick="() => OpenEditBudget(b)" style="cursor: pointer;">
+                    <div class="budget-header">
+                        <div class="budget-category-info">
+                            <div class="category-icon-circle mint" style="width: 40px; height: 40px;">
+                                @((MarkupString)GetBudgetCategoryIcon(b.CategoryName))
+                            </div>
+                            <span class="budget-category-name">@b.CategoryName</span>
+                        </div>
+                        <span class="budget-percent-pill">@percent%</span>
                     </div>
-                    <span class="budget-category-name">@b.CategoryName</span>
+
+                    <div class="budget-amount-row">
+                        <span class="budget-amount-spent">@b.Spent.ToString("C0")</span>
+                        <span class="budget-amount-limit">/ @b.Limit.ToString("C0")</span>
+                    </div>
+
+                    <div class="progress-track">
+                        <div class="progress-fill @(percent >= 80 ? "red" : "green")" style="width: @Math.Min(100, percent)%"></div>
+                    </div>
                 </div>
-                <span class="budget-percent-pill">@percent%</span>
-            </div>
-
-            <div class="budget-amount-row">
-                <span class="budget-amount-spent">@b.Spent.ToString("C0")</span>
-                <span class="budget-amount-limit">/ @b.Limit.ToString("C0")</span>
-            </div>
-
-            <div class="progress-track">
-                <div class="progress-fill @(percent >= 80 ? "red" : "green")" style="width: @Math.Min(100, percent)%"></div>
-            </div>
+            }
         </div>
-    }
 
-    <!-- Savings Goals Section -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin: 24px 0 14px 0;">
-        <h2 class="section-title" style="margin: 0;">Savings Goals</h2>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <button class="icon-button" @onclick="OpenAddGoal" title="Add Savings Goal" style="background: #E2E8F0; width: 34px; height: 34px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-            </button>
-            <span class="card-action-link" style="font-size: 14px; font-weight: 600;">View All</span>
+        <div class="savings-column">
+            <!-- Savings Goals Section -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <h2 class="section-title" style="margin: 0;">Savings Goals</h2>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="icon-button" @onclick="OpenAddGoal" title="Add Savings Goal" style="background: #E2E8F0; width: 34px; height: 34px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                    <span class="card-action-link" style="font-size: 14px; font-weight: 600;">View All</span>
+                </div>
+            </div>
+
+            @foreach (var g in savingsGoals)
+            {
+                <div class="savings-card">
+                    <div class="savings-header" @onclick="() => OpenEditGoal(g)" style="cursor: pointer;">
+                        <div class="category-icon-circle @GetSavingsColorClass(g.Name)" style="width: 44px; height: 44px;">
+                            @((MarkupString)GetSavingsIcon(g.Name))
+                        </div>
+                        <div>
+                            <div class="savings-name">@g.Name</div>
+                            <div class="savings-subtext">@g.ProgressPercent.ToString("0.#")% Achieved</div>
+                        </div>
+                    </div>
+
+                    <div class="savings-amount-row">
+                        <span class="savings-current">@g.CurrentAmount.ToString("C0")</span>
+                        <span class="savings-target">of @g.TargetAmount.ToString("C0")</span>
+                    </div>
+
+                    <div class="progress-track">
+                        <div class="progress-fill green" style="width: @Math.Min(100, g.ProgressPercent)%"></div>
+                    </div>
+
+                    <button class="btn-contribute-inline" @onclick="() => OpenContributeModal(g)">
+                        + Contribute
+                    </button>
+                </div>
+            }
         </div>
     </div>
-
-    @foreach (var g in savingsGoals)
-    {
-        <div class="savings-card">
-            <div class="savings-header" @onclick="() => OpenEditGoal(g)" style="cursor: pointer;">
-                <div class="category-icon-circle @GetSavingsColorClass(g.Name)" style="width: 44px; height: 44px;">
-                    @((MarkupString)GetSavingsIcon(g.Name))
-                </div>
-                <div>
-                    <div class="savings-name">@g.Name</div>
-                    <div class="savings-subtext">@g.ProgressPercent.ToString("0.#")% Achieved</div>
-                </div>
-            </div>
-
-            <div class="savings-amount-row">
-                <span class="savings-current">@g.CurrentAmount.ToString("C0")</span>
-                <span class="savings-target">of @g.TargetAmount.ToString("C0")</span>
-            </div>
-
-            <div class="progress-track">
-                <div class="progress-fill green" style="width: @Math.Min(100, g.ProgressPercent)%"></div>
-            </div>
-
-            <button class="btn-contribute-inline" @onclick="() => OpenContributeModal(g)">
-                + Contribute
-            </button>
-        </div>
-    }
 </div>
 
 <BudgetModal @bind-IsOpen="isBudgetModalOpen" BudgetToEdit="selectedBudget" OnSaved="LoadData" />

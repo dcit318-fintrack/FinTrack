@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using FinTrack.Shared.DTOs.Auth;
-using FinTrack.Shared.DTOs.Common;
 using Microsoft.JSInterop;
 
 namespace FinTrack.Client.Services;
@@ -11,7 +10,7 @@ public class AuthService : IAuthService
     private readonly IJSRuntime _js;
     public event Action? OnAuthStateChanged;
 
-    private string? _token = "demo-active-token";
+    private string? _token;
     private string _currentUserName = "Samuel Watson";
     private string _currentUserEmail = "samuel@ug.edu.gh";
 
@@ -21,89 +20,90 @@ public class AuthService : IAuthService
         _js = js;
     }
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    public async Task<string?> GetTokenAsync()
     {
-        try
+        if (string.IsNullOrEmpty(_token))
         {
-            var response = await _http.PostAsJsonAsync("/api/auth/login", request);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (auth != null)
+                _token = await _js.InvokeAsync<string?>("localStorage.getItem", "authToken");
+            }
+            catch
+            {
+                // Ignored in prerendering
+            }
+
+            if (string.IsNullOrEmpty(_token))
+            {
+                // Auto-authenticate with the seeded backend demo user
+                try
                 {
-                    _token = auth.AccessToken;
-                    _currentUserName = auth.FullName;
-                    _currentUserEmail = auth.Email;
-                    await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-                    OnAuthStateChanged?.Invoke();
-                    return auth;
+                    var demoLogin = await _http.PostAsJsonAsync("api/auth/login", new LoginRequest
+                    {
+                        Email = "samuel@ug.edu.gh",
+                        Password = "Password123!"
+                    });
+                    if (demoLogin.IsSuccessStatusCode)
+                    {
+                        var auth = await demoLogin.Content.ReadFromJsonAsync<AuthResponse>();
+                        if (auth != null)
+                        {
+                            _token = auth.AccessToken;
+                            _currentUserName = auth.FullName;
+                            _currentUserEmail = auth.Email;
+                            try { await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token); } catch { }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Server starting up
                 }
             }
         }
-        catch (Exception)
+        return _token;
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    {
+        var response = await _http.PostAsJsonAsync("api/auth/login", request);
+        if (response.IsSuccessStatusCode)
         {
-            // Fallback for demo when backend is offline
+            var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            if (auth != null)
+            {
+                _token = auth.AccessToken;
+                _currentUserName = auth.FullName;
+                _currentUserEmail = auth.Email;
+                await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+                OnAuthStateChanged?.Invoke();
+                return auth;
+            }
         }
 
-        // Demo / Mock success response
-        var demoAuth = new AuthResponse
-        {
-            UserId = Guid.NewGuid(),
-            Email = request.Email,
-            FullName = request.Email.Split('@')[0],
-            AccessToken = "mock-jwt-token-" + Guid.NewGuid().ToString("N"),
-            RefreshToken = "mock-refresh-token",
-            ExpiresAt = DateTime.UtcNow.AddHours(2)
-        };
-
-        _token = demoAuth.AccessToken;
-        _currentUserName = demoAuth.FullName;
-        _currentUserEmail = demoAuth.Email;
-        await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-        OnAuthStateChanged?.Invoke();
-        return demoAuth;
+        var errorText = await response.Content.ReadAsStringAsync();
+        throw new InvalidOperationException(!string.IsNullOrWhiteSpace(errorText) ? errorText : "Invalid email or password");
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        try
+        var response = await _http.PostAsJsonAsync("api/auth/register", request);
+        if (response.IsSuccessStatusCode)
         {
-            var response = await _http.PostAsJsonAsync("/api/auth/register", request);
-            if (response.IsSuccessStatusCode)
+            var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            if (auth != null)
             {
-                var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (auth != null)
-                {
-                    _token = auth.AccessToken;
-                    _currentUserName = auth.FullName;
-                    _currentUserEmail = auth.Email;
-                    await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-                    OnAuthStateChanged?.Invoke();
-                    return auth;
-                }
+                _token = auth.AccessToken;
+                _currentUserName = auth.FullName;
+                _currentUserEmail = auth.Email;
+                await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+                OnAuthStateChanged?.Invoke();
+                return auth;
             }
         }
-        catch (Exception)
-        {
-            // Fallback for demo when backend is offline
-        }
 
-        var demoAuth = new AuthResponse
-        {
-            UserId = Guid.NewGuid(),
-            Email = request.Email,
-            FullName = request.FullName,
-            AccessToken = "mock-jwt-token-" + Guid.NewGuid().ToString("N"),
-            RefreshToken = "mock-refresh-token",
-            ExpiresAt = DateTime.UtcNow.AddHours(2)
-        };
-
-        _token = demoAuth.AccessToken;
-        _currentUserName = demoAuth.FullName;
-        _currentUserEmail = demoAuth.Email;
-        await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-        OnAuthStateChanged?.Invoke();
-        return demoAuth;
+        var errorText = await response.Content.ReadAsStringAsync();
+        throw new InvalidOperationException(!string.IsNullOrWhiteSpace(errorText) ? errorText : "Registration failed.");
     }
 
     public async Task LogoutAsync()
@@ -115,9 +115,10 @@ public class AuthService : IAuthService
         OnAuthStateChanged?.Invoke();
     }
 
-    public Task<bool> IsAuthenticatedAsync()
+    public async Task<bool> IsAuthenticatedAsync()
     {
-        return Task.FromResult(!string.IsNullOrEmpty(_token));
+        var token = await GetTokenAsync();
+        return !string.IsNullOrEmpty(token);
     }
 
     public Task<string> GetCurrentUserEmailAsync()
@@ -130,3 +131,4 @@ public class AuthService : IAuthService
         return Task.FromResult(_currentUserName);
     }
 }
+

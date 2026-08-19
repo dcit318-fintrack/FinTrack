@@ -8,6 +8,7 @@ public interface IAuthService
     Task<AuthResponse> RegisterAsync(RegisterRequest request);
     Task LogoutAsync();
     Task<bool> IsAuthenticatedAsync();
+    Task<string?> GetTokenAsync();
     Task<string> GetCurrentUserEmailAsync();
     Task<string> GetCurrentUserNameAsync();
     event Action? OnAuthStateChanged;
