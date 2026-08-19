@@ -53,15 +53,15 @@ public class AuthController : ControllerBase
 
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
         var (success, response, errorMessage) = await _authService.RefreshTokenAsync(request);
         if (!success)
         {
-            return BadRequest(new ErrorResponse
+            return Unauthorized(new ErrorResponse
             {
-                Message = errorMessage ?? "Refresh token invalid"
+                Message = errorMessage ?? "Invalid or expired refresh token"
             });
         }
 

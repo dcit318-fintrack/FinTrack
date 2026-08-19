@@ -1,6 +1,7 @@
 // Shared test infrastructure for all FinTrack integration tests.
-// Once FinTrack.Server has a real Program entry point, swap the comment below.
 
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FinTrack.Tests;
@@ -13,15 +14,13 @@ namespace FinTrack.Tests;
 public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 {
     protected readonly HttpClient Client;
+    protected readonly WebApplicationFactory<Program> Factory;
 
     protected IntegrationTestBase(WebApplicationFactory<Program> factory)
     {
+        Factory = factory;
         Client = factory.CreateClient();
     }
-
-    // ---------------------------------------------------------------------------
-    // Helpers — add to these as the API takes shape
-    // ---------------------------------------------------------------------------
 
     /// <summary>
     /// Registers a fresh user and returns their access token.
@@ -32,12 +31,15 @@ public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<
         string password = "Password1!",
         string fullName = "Test User")
     {
-        // TODO: implement once POST /api/auth/register exists
-        // var response = await Client.PostAsJsonAsync("/api/auth/register", new { email, password, fullName });
-        // response.EnsureSuccessStatusCode();
-        // var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        // return body.GetProperty("accessToken").GetString()!;
-        throw new NotImplementedException("Implement once /api/auth/register is live.");
+        var uniqueEmail = email == "test@example.com" ? $"test_{Guid.NewGuid()}@example.com" : email;
+        var response = await Client.PostAsJsonAsync("/api/auth/register", new { email = uniqueEmail, password, fullName });
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Register failed: {response.StatusCode} - {err}");
+        }
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("accessToken").GetString()!;
     }
 
     /// <summary>
@@ -45,7 +47,7 @@ public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<
     /// </summary>
     protected HttpClient AuthenticatedClient(string token)
     {
-        var client = Client;
+        var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;

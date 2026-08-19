@@ -74,13 +74,13 @@ public class AuthService : IAuthService
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
-            return (false, null, "Invalid email or password.");
+            return (false, null, "Invalid email or password");
         }
 
         var isValidPassword = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!isValidPassword)
         {
-            return (false, null, "Invalid email or password.");
+            return (false, null, "Invalid email or password");
         }
 
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
