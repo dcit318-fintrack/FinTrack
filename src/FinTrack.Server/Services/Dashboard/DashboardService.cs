@@ -30,19 +30,16 @@ public class DashboardService : IDashboardService
         }
         var endDate = startDate.AddMonths(1).AddTicks(-1);
 
-        // Transactions within month
-        var monthTransactions = await _dbContext.Transactions
+        // Database-side aggregation for income & expenses (0 in-memory materialization)
+        var totalIncome = await _dbContext.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId && t.Date >= startDate && t.Date <= endDate)
-            .ToListAsync();
+            .Where(t => t.UserId == userId && t.Type == "Income" && t.Date >= startDate && t.Date <= endDate)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
 
-        var totalIncome = monthTransactions
-            .Where(t => t.Type.Equals("Income", StringComparison.OrdinalIgnoreCase))
-            .Sum(t => t.Amount);
-
-        var totalExpenses = monthTransactions
-            .Where(t => t.Type.Equals("Expense", StringComparison.OrdinalIgnoreCase))
-            .Sum(t => t.Amount);
+        var totalExpenses = await _dbContext.Transactions
+            .AsNoTracking()
+            .Where(t => t.UserId == userId && t.Type == "Expense" && t.Date >= startDate && t.Date <= endDate)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
 
         var balance = totalIncome - totalExpenses;
 
