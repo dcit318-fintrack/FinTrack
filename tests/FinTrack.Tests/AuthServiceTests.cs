@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using FinTrack.Server.Models;
 using FinTrack.Server.Services.Auth;
 using Microsoft.Extensions.Configuration;
@@ -28,7 +30,7 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public void GenerateToken_ShouldReturnValidJwtToken()
+    public void GenerateToken_ShouldReturnValidJwtTokenWithCorrectClaims()
     {
         // Arrange
         var user = new ApplicationUser
@@ -45,5 +47,40 @@ public class AuthServiceTests
         Assert.NotNull(token);
         Assert.NotEmpty(token);
         Assert.True(expiresAt > DateTime.UtcNow);
+
+        // Parse token and assert claims
+        var handler = new JwtSecurityTokenHandler();
+        Assert.True(handler.CanReadToken(token));
+
+        var jwtToken = handler.ReadJwtToken(token);
+        Assert.Equal("FinTrackTestServer", jwtToken.Issuer);
+        Assert.Contains("FinTrackTestClient", jwtToken.Audiences);
+
+        var subClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub || c.Type == "sub");
+        Assert.NotNull(subClaim);
+        Assert.Equal(user.Id.ToString(), subClaim.Value);
+
+        var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email || c.Type == "email");
+        Assert.NotNull(emailClaim);
+        Assert.Equal(user.Email, emailClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateRefreshToken_ShouldReturnRandomBase64String()
+    {
+        // Act
+        var token1 = _jwtTokenGenerator.GenerateRefreshToken();
+        var token2 = _jwtTokenGenerator.GenerateRefreshToken();
+
+        // Assert
+        Assert.NotNull(token1);
+        Assert.NotEmpty(token1);
+        Assert.NotNull(token2);
+        Assert.NotEmpty(token2);
+        Assert.NotEqual(token1, token2);
+
+        // Verify base64 valid
+        var bytes = Convert.FromBase64String(token1);
+        Assert.Equal(32, bytes.Length);
     }
 }
