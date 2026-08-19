@@ -276,13 +276,14 @@ public class FinTrackApiService : IFinTrackApiService
 
     public Task<TransactionDto> CreateTransactionAsync(CreateTransactionRequest request)
     {
-        var category = _categories.FirstOrDefault(c => c.Id == request.CategoryId);
+        var catId = request.CategoryId ?? Guid.Empty;
+        var category = _categories.FirstOrDefault(c => c.Id == catId);
         var item = new TransactionDto
         {
             Id = Guid.NewGuid(),
             Amount = request.Amount,
             Type = request.Type,
-            CategoryId = request.CategoryId,
+            CategoryId = catId,
             CategoryName = category?.Name ?? "Other",
             Description = request.Description,
             Date = request.Date
@@ -298,10 +299,11 @@ public class FinTrackApiService : IFinTrackApiService
         var existing = _transactions.FirstOrDefault(t => t.Id == id);
         if (existing == null) throw new KeyNotFoundException("Transaction not found");
 
-        var category = _categories.FirstOrDefault(c => c.Id == request.CategoryId);
+        var catId = request.CategoryId ?? existing.CategoryId;
+        var category = _categories.FirstOrDefault(c => c.Id == catId);
         existing.Amount = request.Amount;
         existing.Type = request.Type;
-        existing.CategoryId = request.CategoryId;
+        existing.CategoryId = catId;
         existing.CategoryName = category?.Name ?? existing.CategoryName;
         existing.Description = request.Description;
         existing.Date = request.Date;
@@ -351,11 +353,12 @@ public class FinTrackApiService : IFinTrackApiService
 
     public Task<BudgetDto> CreateBudgetAsync(CreateBudgetRequest request)
     {
-        var category = _categories.FirstOrDefault(c => c.Id == request.CategoryId);
+        var catId = request.CategoryId ?? Guid.Empty;
+        var category = _categories.FirstOrDefault(c => c.Id == catId);
         var budget = new BudgetDto
         {
             Id = Guid.NewGuid(),
-            CategoryId = request.CategoryId,
+            CategoryId = catId,
             CategoryName = category?.Name ?? "General",
             Limit = request.Limit,
             Spent = 0m,
