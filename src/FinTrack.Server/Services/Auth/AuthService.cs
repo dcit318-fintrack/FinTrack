@@ -1,6 +1,7 @@
 using FinTrack.Server.Models;
 using FinTrack.Shared.DTOs.Auth;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Server.Services.Auth;
 
@@ -9,9 +10,7 @@ public class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
-    public AuthService(
-        UserManager<ApplicationUser> userManager,
-        IJwtTokenGenerator jwtTokenGenerator)
+    public AuthService(UserManager<ApplicationUser> userManager, IJwtTokenGenerator jwtTokenGenerator)
     {
         _userManager = userManager;
         _jwtTokenGenerator = jwtTokenGenerator;
@@ -22,11 +21,11 @@ public class AuthService : IAuthService
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            var fieldErrors = new Dictionary<string, string[]>
+            var errors = new Dictionary<string, string[]>
             {
-                { "email", new[] { "An account with this email address already exists." } }
+                { "email", new[] { "A user with this email address already exists." } }
             };
-            return (false, null, "User registration failed.", fieldErrors);
+            return (false, null, "Validation failed.", errors);
         }
 
         var user = new ApplicationUser
@@ -43,13 +42,19 @@ public class AuthService : IAuthService
         {
             var errors = result.Errors
                 .GroupBy(e => e.Code)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray());
-
-            return (false, null, "User creation failed.", errors);
+                .ToDictionary(
+                    g => g.Key.ToLower(),
+                    g => g.Select(e => e.Description).ToArray()
+                );
+            return (false, null, "Validation failed.", errors);
         }
 
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
         var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
+
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        await _userManager.UpdateAsync(user);
 
         var response = new AuthResponse
         {
@@ -81,6 +86,10 @@ public class AuthService : IAuthService
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
         var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        await _userManager.UpdateAsync(user);
+
         var response = new AuthResponse
         {
             UserId = user.Id,
@@ -101,7 +110,29 @@ public class AuthService : IAuthService
             return (false, null, "Invalid refresh token.");
         }
 
-        // For v1 demo: returns simulated token refresh acknowledgement
-        return (false, null, "Token refresh mechanism requires persistent refresh token.");
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+        if (user == null || user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        {
+            return (false, null, "Invalid or expired refresh token.");
+        }
+
+        var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
+        var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
+
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        await _userManager.UpdateAsync(user);
+
+        var response = new AuthResponse
+        {
+            UserId = user.Id,
+            Email = user.Email ?? string.Empty,
+            FullName = user.FullName,
+            AccessToken = token,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = expiresAt
+        };
+
+        return (true, response, null);
     }
 }
