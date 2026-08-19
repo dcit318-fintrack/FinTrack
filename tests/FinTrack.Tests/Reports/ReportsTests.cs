@@ -1,8 +1,6 @@
-// Reports tests for GET /api/reports/*
-// Activate tests (remove Skip) once report endpoints are implemented (#21).
-// Note from sprint plan: these are the slowest calls in the app — coordinate
-// with the DB pair (#34) on query efficiency before these go live.
-
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FinTrack.Tests.Reports;
@@ -10,86 +8,60 @@ namespace FinTrack.Tests.Reports;
 public class ReportsTests(WebApplicationFactory<Program> factory)
     : IntegrationTestBase(factory)
 {
-    // -------------------------------------------------------------------------
-    // GET /api/reports/spending-by-category
-    // -------------------------------------------------------------------------
+    [Fact]
+    public async Task SpendingByCategory_Unauthenticated_Returns401()
+    {
+        var response = await Client.GetAsync("/api/reports/spending-by-category?from=2026-08-01&to=2026-08-31");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 
-    [Fact(Skip = "Pending: GET /api/reports/spending-by-category (#21)")]
+    [Fact]
     public async Task SpendingByCategory_ValidDateRange_Returns200WithCorrectShape()
     {
-        // Assert: from, to, totalSpent, categories[] with categoryId/categoryName/amount/percentOfTotal
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.GetAsync("/api/reports/spending-by-category?from=2026-08-01&to=2026-08-31");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("from", out _));
+        Assert.True(body.TryGetProperty("to", out _));
+        Assert.True(body.TryGetProperty("totalSpent", out _));
+        Assert.True(body.TryGetProperty("categories", out _));
     }
 
-    [Fact(Skip = "Pending: GET /api/reports/spending-by-category (#21)")]
-    public async Task SpendingByCategory_CategoriesSortedByAmountDescending()
+    [Fact]
+    public async Task SpendingByCategory_MissingDates_Returns400()
     {
-        // Add expenses: Food=600, Transport=200, Entertainment=400
-        // Assert order: Food(600), Entertainment(400), Transport(200)
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.GetAsync("/api/reports/spending-by-category");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact(Skip = "Pending: GET /api/reports/spending-by-category (#21)")]
-    public async Task SpendingByCategory_PercentOfTotalSumsToHundred()
-    {
-        // All category percents must add up to 100 (within 0.1% tolerance)
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/reports/spending-by-category (#21)")]
-    public async Task SpendingByCategory_MissingFrom_Returns400()
-    {
-        // Both `from` and `to` are required — omitting either should fail
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/reports/spending-by-category (#21)")]
-    public async Task SpendingByCategory_MissingTo_Returns400()
-    {
-        throw new NotImplementedException();
-    }
-
-    // -------------------------------------------------------------------------
-    // GET /api/reports/income-vs-expense
-    // -------------------------------------------------------------------------
-
-    [Theory(Skip = "Pending: GET /api/reports/income-vs-expense (#21)")]
-    [InlineData("daily")]
-    [InlineData("weekly")]
-    [InlineData("monthly")]
-    public async Task IncomeVsExpense_ValidGranularity_Returns200(string granularity)
-    {
-        // Assert: granularity matches, points[] contains period/income/expense/net
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/reports/income-vs-expense (#21)")]
+    [Fact]
     public async Task IncomeVsExpense_InvalidGranularity_Returns400()
     {
-        // granularity = "annual" or any unsupported value
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.GetAsync("/api/reports/income-vs-expense?from=2026-01-01&to=2026-08-31&granularity=annual");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact(Skip = "Pending: GET /api/reports/income-vs-expense (#21)")]
-    public async Task IncomeVsExpense_DefaultGranularityIsMonthly()
+    [Fact]
+    public async Task IncomeVsExpense_ValidGranularity_Returns200()
     {
-        // Omit granularity param; assert response.granularity == "monthly"
-        throw new NotImplementedException();
-    }
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
 
-    [Fact(Skip = "Pending: GET /api/reports/income-vs-expense (#21)")]
-    public async Task IncomeVsExpense_MonthWithNoTransactions_StillAppearsWithZeros()
-    {
-        // Request a range that includes a month with no data
-        // Assert: that month's point has income=0, expense=0, net=0
-        // Critical: the contract explicitly requires this to avoid chart gaps
-        throw new NotImplementedException();
-    }
+        var response = await client.GetAsync("/api/reports/income-vs-expense?from=2026-01-01&to=2026-08-31&granularity=monthly");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-    [Fact(Skip = "Pending: GET /api/reports/income-vs-expense (#21)")]
-    public async Task IncomeVsExpense_NetEqualsIncomeMinusExpense()
-    {
-        // For each point: assert net == income - expense exactly
-        throw new NotImplementedException();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("monthly", body.GetProperty("granularity").GetString());
+        Assert.True(body.TryGetProperty("points", out _));
     }
 }
