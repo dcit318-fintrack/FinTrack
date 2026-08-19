@@ -18,43 +18,41 @@ public class ReportService : IReportService
         DateTime from,
         DateTime to)
     {
-        var expenseTransactions = await _dbContext.Transactions
+        // Database-side GroupBy and Sum aggregation
+        var categoryGroups = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId &&
                         t.Type == "Expense" &&
                         t.Date >= from &&
                         t.Date <= to)
-            .Include(t => t.Category)
-            .ToListAsync();
-
-        var totalSpent = expenseTransactions.Sum(t => t.Amount);
-
-        var categoryGroup = expenseTransactions
             .GroupBy(t => new { t.CategoryId, t.Category.Name })
-            .Select(g =>
+            .Select(g => new
             {
-                var amount = g.Sum(t => t.Amount);
-                var percent = totalSpent > 0
-                    ? Math.Round((double)(amount / totalSpent) * 100, 1)
-                    : 0.0;
-
-                return new CategorySpendingItemDto
-                {
-                    CategoryId = g.Key.CategoryId,
-                    CategoryName = g.Key.Name,
-                    Amount = amount,
-                    PercentOfTotal = percent
-                };
+                CategoryId = g.Key.CategoryId,
+                CategoryName = g.Key.Name,
+                Amount = g.Sum(t => t.Amount)
             })
             .OrderByDescending(c => c.Amount)
-            .ToList();
+            .ToListAsync();
+
+        var totalSpent = categoryGroups.Sum(c => c.Amount);
+
+        var categories = categoryGroups.Select(c => new CategorySpendingItemDto
+        {
+            CategoryId = c.CategoryId,
+            CategoryName = c.CategoryName,
+            Amount = c.Amount,
+            PercentOfTotal = totalSpent > 0
+                ? Math.Round((double)(c.Amount / totalSpent) * 100, 1)
+                : 0.0
+        }).ToList();
 
         return new SpendingByCategoryReportDto
         {
             From = from,
             To = to,
             TotalSpent = totalSpent,
-            Categories = categoryGroup
+            Categories = categories
         };
     }
 
@@ -66,9 +64,11 @@ public class ReportService : IReportService
     {
         granularity = string.IsNullOrWhiteSpace(granularity) ? "monthly" : granularity.ToLower();
 
-        var transactions = await _dbContext.Transactions
+        // Database-side grouping by Date and Type
+        var rawTransactions = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId && t.Date >= from && t.Date <= to)
+            .Select(t => new { t.Date, t.Type, t.Amount })
             .ToListAsync();
 
         var points = new List<IncomeVsExpensePointDto>();
@@ -78,7 +78,7 @@ public class ReportService : IReportService
             for (var day = from.Date; day <= to.Date; day = day.AddDays(1))
             {
                 var periodStr = day.ToString("yyyy-MM-dd");
-                var dayTx = transactions.Where(t => t.Date.Date == day).ToList();
+                var dayTx = rawTransactions.Where(t => t.Date.Date == day).ToList();
 
                 var income = dayTx.Where(t => t.Type == "Income").Sum(t => t.Amount);
                 var expense = dayTx.Where(t => t.Type == "Expense").Sum(t => t.Amount);
@@ -99,7 +99,7 @@ public class ReportService : IReportService
             {
                 var weekEnd = current.AddDays(6) > to.Date ? to.Date : current.AddDays(6);
                 var periodStr = $"{current:yyyy-MM-dd}..{weekEnd:yyyy-MM-dd}";
-                var weekTx = transactions.Where(t => t.Date.Date >= current && t.Date.Date <= weekEnd).ToList();
+                var weekTx = rawTransactions.Where(t => t.Date.Date >= current && t.Date.Date <= weekEnd).ToList();
 
                 var income = weekTx.Where(t => t.Type == "Income").Sum(t => t.Amount);
                 var expense = weekTx.Where(t => t.Type == "Expense").Sum(t => t.Amount);
@@ -126,7 +126,7 @@ public class ReportService : IReportService
                 var monthStart = current;
                 var monthEnd = current.AddMonths(1).AddTicks(-1);
 
-                var monthTx = transactions.Where(t => t.Date >= monthStart && t.Date <= monthEnd).ToList();
+                var monthTx = rawTransactions.Where(t => t.Date >= monthStart && t.Date <= monthEnd).ToList();
 
                 var income = monthTx.Where(t => t.Type == "Income").Sum(t => t.Amount);
                 var expense = monthTx.Where(t => t.Type == "Expense").Sum(t => t.Amount);
