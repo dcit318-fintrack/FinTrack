@@ -31,11 +31,20 @@ public class ApiExceptionMiddleware
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+
+        var (statusCode, message) = exception switch
+        {
+            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized access."),
+            KeyNotFoundException => (HttpStatusCode.NotFound, "The requested resource was not found."),
+            ArgumentException or InvalidOperationException => (HttpStatusCode.BadRequest, exception.Message),
+            _ => (HttpStatusCode.InternalServerError, "An unexpected server error occurred. Please try again later.")
+        };
+
+        context.Response.StatusCode = (int)statusCode;
 
         var errorResponse = new ErrorResponse
         {
-            Message = "An unexpected server error occurred. Please try again later."
+            Message = message
         };
 
         var json = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions

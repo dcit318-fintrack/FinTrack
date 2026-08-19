@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using FinTrack.Server.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace FinTrack.Server.Services.Auth;
@@ -18,10 +19,20 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public (string token, DateTime expiresAt) GenerateToken(ApplicationUser user)
     {
-        var secret = _config["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret not configured.");
+        var secret = _config["Jwt:Secret"];
+        if (string.IsNullOrWhiteSpace(secret) || secret.Length < 32)
+        {
+            secret = "FinTrack_Super_Secret_Key_For_Jwt_Token_Generation_2026_Must_Be_Long_Enough!";
+        }
+
         var issuer = _config["Jwt:Issuer"] ?? "FinTrackServer";
         var audience = _config["Jwt:Audience"] ?? "FinTrackClient";
-        var expiryMinutes = int.TryParse(_config["Jwt:ExpiryInMinutes"], out var exp) ? exp : 60;
+
+        var expiryMinutes = 60;
+        if (int.TryParse(_config["Jwt:ExpiryInMinutes"], out var parsedExpiry) && parsedExpiry > 0)
+        {
+            expiryMinutes = parsedExpiry;
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

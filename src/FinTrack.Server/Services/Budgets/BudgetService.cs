@@ -27,19 +27,13 @@ public class BudgetService : IBudgetService
             .Include(b => b.Category)
             .ToListAsync();
 
-        if (!budgets.Any())
+        if (!DateTime.TryParseExact(month + "-01", "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var startDate))
         {
             return new List<BudgetDto>();
         }
 
-        // Calculate start and end dates for the month
-        if (!DateTime.TryParseExact(month + "-01", "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var startDate))
-        {
-            startDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        }
         var endDate = startDate.AddMonths(1).AddTicks(-1);
 
-        // Fetch all expense transactions for the user within that month
         var expenseSums = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId &&
@@ -74,7 +68,10 @@ public class BudgetService : IBudgetService
         Guid userId,
         CreateBudgetRequest request)
     {
-        var category = await _dbContext.Categories.FindAsync(request.CategoryId);
+        var category = request.CategoryId.HasValue
+            ? await _dbContext.Categories.FindAsync(request.CategoryId.Value)
+            : null;
+
         if (category == null)
         {
             var errors = new Dictionary<string, string[]>
@@ -84,8 +81,10 @@ public class BudgetService : IBudgetService
             return (false, null, "Validation failed.", errors, false);
         }
 
+        var categoryIdVal = request.CategoryId!.Value;
+
         var existingBudget = await _dbContext.Budgets
-            .AnyAsync(b => b.UserId == userId && b.CategoryId == request.CategoryId && b.Month == request.Month);
+            .AnyAsync(b => b.UserId == userId && b.CategoryId == categoryIdVal && b.Month == request.Month);
 
         if (existingBudget)
         {
@@ -96,7 +95,7 @@ public class BudgetService : IBudgetService
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            CategoryId = request.CategoryId,
+            CategoryId = categoryIdVal,
             Limit = Math.Round(request.Limit, 2),
             Month = request.Month,
             CreatedAt = DateTime.UtcNow
