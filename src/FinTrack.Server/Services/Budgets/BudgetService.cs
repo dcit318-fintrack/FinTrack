@@ -14,7 +14,7 @@ public class BudgetService : IBudgetService
         _dbContext = dbContext;
     }
 
-    public async Task<List<BudgetDto>> GetAllAsync(Guid userId, string? month)
+    public async Task<List<BudgetDto>> GetBudgetsAsync(Guid userId, string month)
     {
         if (string.IsNullOrWhiteSpace(month))
         {
@@ -118,7 +118,7 @@ public class BudgetService : IBudgetService
         return (true, dto, null, null, false);
     }
 
-    public async Task<(bool success, BudgetDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> UpdateAsync(
+    public async Task<(bool success, BudgetDto? dto, string? errorMessage)> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateBudgetRequest request)
@@ -129,7 +129,7 @@ public class BudgetService : IBudgetService
 
         if (budget == null)
         {
-            return (false, null, "Budget not found.", null);
+            return (false, null, "Budget not found.");
         }
 
         budget.Limit = Math.Round(request.Limit, 2);
@@ -146,7 +146,7 @@ public class BudgetService : IBudgetService
             Month = budget.Month
         };
 
-        return (true, dto, null, null);
+        return (true, dto, null);
     }
 
     public async Task<bool> DeleteAsync(Guid userId, Guid id)
