@@ -2,6 +2,7 @@ using FinTrack.Server.Data;
 using FinTrack.Server.Models;
 using FinTrack.Server.Services.Reports;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace FinTrack.Tests;
@@ -23,7 +24,7 @@ public class ReportServiceTests
     public async Task GetSpendingByCategoryReportAsync_ShouldCalculateCategoryPercentagesCorrectly()
     {
         using var context = GetInMemoryDbContext();
-        var service = new ReportService(context);
+        var service = new ReportService(context, NullLogger<ReportService>.Instance);
 
         var userId = Guid.NewGuid();
         var foodId = Guid.Parse("11111111-1111-1111-1111-111111111111"); // Food
@@ -94,7 +95,7 @@ public class ReportServiceTests
     public async Task GetIncomeVsExpenseReportAsync_ShouldReturnDailyPointsWithZeroFilledGaps()
     {
         using var context = GetInMemoryDbContext();
-        var service = new ReportService(context);
+        var service = new ReportService(context, NullLogger<ReportService>.Instance);
 
         var userId = Guid.NewGuid();
         var foodId = Guid.Parse("11111111-1111-1111-1111-111111111111");

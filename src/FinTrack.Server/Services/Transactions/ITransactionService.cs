@@ -1,3 +1,4 @@
+using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Transaction;
 
 namespace FinTrack.Server.Services.Transactions;

@@ -7,10 +7,12 @@ namespace FinTrack.Server.Services.Reports;
 public class ReportService : IReportService
 {
     private readonly FinTrackDbContext _dbContext;
+    private readonly ILogger<ReportService> _logger;
 
-    public ReportService(FinTrackDbContext dbContext)
+    public ReportService(FinTrackDbContext dbContext, ILogger<ReportService> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<SpendingByCategoryReportDto> GetSpendingByCategoryReportAsync(
@@ -18,7 +20,6 @@ public class ReportService : IReportService
         DateTime from,
         DateTime to)
     {
-        // Database-side GroupBy and Sum aggregation
         var categoryGroups = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId &&
@@ -47,6 +48,8 @@ public class ReportService : IReportService
                 : 0.0
         }).ToList();
 
+        _logger.LogInformation("Spending report generated for user {UserId}: {From} to {To}, total={Total}", userId, from, to, totalSpent);
+
         return new SpendingByCategoryReportDto
         {
             From = from,
@@ -64,7 +67,6 @@ public class ReportService : IReportService
     {
         granularity = string.IsNullOrWhiteSpace(granularity) ? "monthly" : granularity.ToLower();
 
-        // Database-side grouping by Date and Type
         var rawTransactions = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId && t.Date >= from && t.Date <= to)
@@ -142,6 +144,8 @@ public class ReportService : IReportService
                 current = current.AddMonths(1);
             }
         }
+
+        _logger.LogInformation("Income vs expense report generated for user {UserId}: {From} to {To}, granularity={Granularity}, points={Count}", userId, from, to, granularity, points.Count);
 
         return new IncomeVsExpenseReportDto
         {

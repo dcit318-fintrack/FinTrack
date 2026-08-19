@@ -8,10 +8,12 @@ namespace FinTrack.Server.Services.Savings;
 public class SavingsGoalService : ISavingsGoalService
 {
     private readonly FinTrackDbContext _dbContext;
+    private readonly ILogger<SavingsGoalService> _logger;
 
-    public SavingsGoalService(FinTrackDbContext dbContext)
+    public SavingsGoalService(FinTrackDbContext dbContext, ILogger<SavingsGoalService> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<List<SavingsGoalDto>> GetSavingsGoalsAsync(Guid userId)
@@ -53,6 +55,8 @@ public class SavingsGoalService : ISavingsGoalService
         _dbContext.SavingsGoals.Add(goal);
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Savings goal created: {Id} for user {UserId}", goal.Id, userId);
+
         return (true, MapToDto(goal), null, null);
     }
 
@@ -80,6 +84,8 @@ public class SavingsGoalService : ISavingsGoalService
 
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Savings goal updated: {Id} for user {UserId}", id, userId);
+
         return (true, MapToDto(goal), null);
     }
 
@@ -101,6 +107,8 @@ public class SavingsGoalService : ISavingsGoalService
 
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Contribution of {Amount} to savings goal {Id} by user {UserId}", request.Amount, id, userId);
+
         return (true, MapToDto(goal), null);
     }
 
@@ -116,6 +124,9 @@ public class SavingsGoalService : ISavingsGoalService
 
         _dbContext.SavingsGoals.Remove(goal);
         await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Savings goal deleted: {Id} for user {UserId}", id, userId);
+
         return true;
     }
 
