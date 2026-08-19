@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using FinTrack.Server.Services.Budgets;
 using FinTrack.Shared.DTOs.Budget;
 using FinTrack.Shared.DTOs.Common;
@@ -11,26 +9,13 @@ namespace FinTrack.Server.Controllers;
 [ApiController]
 [Route("api/budgets")]
 [Authorize]
-public class BudgetsController : ControllerBase
+public class BudgetsController : AuthorizedController
 {
     private readonly IBudgetService _budgetService;
 
     public BudgetsController(IBudgetService budgetService)
     {
         _budgetService = budgetService;
-    }
-
-    private Guid GetUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-        if (Guid.TryParse(userIdClaim, out var userId))
-        {
-            return userId;
-        }
-
-        throw new UnauthorizedAccessException("User identity not found.");
     }
 
     [HttpGet]
@@ -49,22 +34,22 @@ public class BudgetsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateBudgetRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage, errors, isConflict) = await _budgetService.CreateAsync(userId, request);
-        if (!success)
+        var result = await _budgetService.CreateAsync(userId, request);
+        if (!result.IsSuccess)
         {
-            if (isConflict)
+            if (result.IsConflict)
             {
-                return Conflict(new ErrorResponse { Message = errorMessage ?? "Duplicate budget." });
+                return Conflict(new ErrorResponse { Message = result.ErrorMessage ?? "Duplicate budget." });
             }
 
             return BadRequest(new ErrorResponse
             {
-                Message = errorMessage ?? "Failed to create budget.",
-                Errors = errors
+                Message = result.ErrorMessage ?? "Failed to create budget.",
+                Errors = result.ValidationErrors
             });
         }
 
-        return StatusCode(StatusCodes.Status201Created, dto);
+        return StatusCode(StatusCodes.Status201Created, result.Data);
     }
 
     [HttpPut("{id:guid}")]
@@ -73,13 +58,13 @@ public class BudgetsController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBudgetRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage) = await _budgetService.UpdateAsync(userId, id, request);
-        if (!success)
+        var result = await _budgetService.UpdateAsync(userId, id, request);
+        if (!result.IsSuccess)
         {
             return NotFound();
         }
 
-        return Ok(dto);
+        return Ok(result.Data);
     }
 
     [HttpDelete("{id:guid}")]

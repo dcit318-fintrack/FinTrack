@@ -1,6 +1,7 @@
 using FinTrack.Server.Data;
 using FinTrack.Server.Models;
 using FinTrack.Shared.DTOs.Budget;
+using FinTrack.Shared.DTOs.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Server.Services.Budgets;
@@ -64,7 +65,7 @@ public class BudgetService : IBudgetService
         }).ToList();
     }
 
-    public async Task<(bool success, BudgetDto? dto, string? errorMessage, Dictionary<string, string[]>? errors, bool isConflict)> CreateAsync(
+    public async Task<Result<BudgetDto>> CreateAsync(
         Guid userId,
         CreateBudgetRequest request)
     {
@@ -74,11 +75,12 @@ public class BudgetService : IBudgetService
 
         if (category == null)
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "categoryId", new[] { "Category does not exist." } }
-            };
-            return (false, null, "Validation failed.", errors, false);
+            return Result<BudgetDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "categoryId", new[] { "Category does not exist." } }
+                });
         }
 
         var categoryIdVal = request.CategoryId!.Value;
@@ -88,7 +90,7 @@ public class BudgetService : IBudgetService
 
         if (existingBudget)
         {
-            return (false, null, "A budget for this category and month already exists.", null, true);
+            return Result<BudgetDto>.Conflict("A budget for this category and month already exists.");
         }
 
         var budget = new Budget
@@ -115,10 +117,10 @@ public class BudgetService : IBudgetService
             Month = budget.Month
         };
 
-        return (true, dto, null, null, false);
+        return Result<BudgetDto>.Success(dto);
     }
 
-    public async Task<(bool success, BudgetDto? dto, string? errorMessage)> UpdateAsync(
+    public async Task<Result<BudgetDto>> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateBudgetRequest request)
@@ -129,7 +131,7 @@ public class BudgetService : IBudgetService
 
         if (budget == null)
         {
-            return (false, null, "Budget not found.");
+            return Result<BudgetDto>.Failure("Budget not found.");
         }
 
         budget.Limit = Math.Round(request.Limit, 2);
@@ -146,7 +148,7 @@ public class BudgetService : IBudgetService
             Month = budget.Month
         };
 
-        return (true, dto, null);
+        return Result<BudgetDto>.Success(dto);
     }
 
     public async Task<bool> DeleteAsync(Guid userId, Guid id)

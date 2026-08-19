@@ -41,12 +41,12 @@ public class TransactionServiceTests
         };
 
         // Act
-        var (success, dto, errorMessage, errors) = await service.CreateAsync(userA, createReq);
+        var result = await service.CreateAsync(userA, createReq);
 
         // Assert
-        Assert.True(success);
-        Assert.NotNull(dto);
-        Assert.Equal(150.50m, dto.Amount);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Data);
+        Assert.Equal(150.50m, result.Data.Amount);
 
         // Verify User A can fetch it
         var pagedUserA = await service.GetTransactionsAsync(userA, null, null, null, null);

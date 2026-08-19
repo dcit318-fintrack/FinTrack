@@ -1,3 +1,4 @@
+using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Savings;
 
 namespace FinTrack.Server.Services.Savings;
@@ -6,16 +7,16 @@ public interface ISavingsGoalService
 {
     Task<List<SavingsGoalDto>> GetSavingsGoalsAsync(Guid userId);
 
-    Task<(bool success, SavingsGoalDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> CreateAsync(
+    Task<Result<SavingsGoalDto>> CreateAsync(
         Guid userId,
         CreateSavingsGoalRequest request);
 
-    Task<(bool success, SavingsGoalDto? dto, string? errorMessage)> UpdateAsync(
+    Task<Result<SavingsGoalDto>> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateSavingsGoalRequest request);
 
-    Task<(bool success, SavingsGoalDto? dto, string? errorMessage)> ContributeAsync(
+    Task<Result<SavingsGoalDto>> ContributeAsync(
         Guid userId,
         Guid id,
         ContributeRequest request);

@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using FinTrack.Server.Services.Reports;
 using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Report;
@@ -11,7 +9,7 @@ namespace FinTrack.Server.Controllers;
 [ApiController]
 [Route("api/reports")]
 [Authorize]
-public class ReportsController : ControllerBase
+public class ReportsController : AuthorizedController
 {
     private readonly IReportService _reportService;
     private static readonly HashSet<string> ValidGranularities = new(StringComparer.OrdinalIgnoreCase)
@@ -22,19 +20,6 @@ public class ReportsController : ControllerBase
     public ReportsController(IReportService reportService)
     {
         _reportService = reportService;
-    }
-
-    private Guid GetUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-        if (Guid.TryParse(userIdClaim, out var userId))
-        {
-            return userId;
-        }
-
-        throw new UnauthorizedAccessException("User identity not found.");
     }
 
     [HttpGet("spending-by-category")]

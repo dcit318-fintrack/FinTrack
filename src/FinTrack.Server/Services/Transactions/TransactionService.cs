@@ -97,7 +97,7 @@ public class TransactionService : ITransactionService
             .FirstOrDefaultAsync();
     }
 
-    public async Task<(bool success, TransactionDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> CreateAsync(
+    public async Task<Result<TransactionDto>> CreateAsync(
         Guid userId,
         CreateTransactionRequest request)
     {
@@ -107,29 +107,32 @@ public class TransactionService : ITransactionService
 
         if (category == null)
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "categoryId", new[] { "Category does not exist." } }
-            };
-            return (false, null, "Validation failed.", errors);
+            return Result<TransactionDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "categoryId", new[] { "Category does not exist." } }
+                });
         }
 
         if (!string.IsNullOrWhiteSpace(request.Type) && !request.Type.Equals(category.Type, StringComparison.OrdinalIgnoreCase))
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "type", new[] { $"Transaction type '{request.Type}' does not match category type '{category.Type}'." } }
-            };
-            return (false, null, "Validation failed.", errors);
+            return Result<TransactionDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "type", new[] { $"Transaction type '{request.Type}' does not match category type '{category.Type}'." } }
+                });
         }
 
         if (request.Date > DateTime.UtcNow.AddMinutes(5))
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "date", new[] { "Transaction date cannot be in the future." } }
-            };
-            return (false, null, "Validation failed.", errors);
+            return Result<TransactionDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "date", new[] { "Transaction date cannot be in the future." } }
+                });
         }
 
         var transaction = new Transaction
@@ -158,10 +161,10 @@ public class TransactionService : ITransactionService
             Date = transaction.Date
         };
 
-        return (true, dto, null, null);
+        return Result<TransactionDto>.Success(dto);
     }
 
-    public async Task<(bool success, TransactionDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> UpdateAsync(
+    public async Task<Result<TransactionDto>> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateTransactionRequest request)
@@ -171,7 +174,7 @@ public class TransactionService : ITransactionService
 
         if (transaction == null)
         {
-            return (false, null, "Transaction not found.", null);
+            return Result<TransactionDto>.Failure("Transaction not found.");
         }
 
         var category = request.CategoryId.HasValue
@@ -180,20 +183,22 @@ public class TransactionService : ITransactionService
 
         if (category == null)
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "categoryId", new[] { "Category does not exist." } }
-            };
-            return (false, null, "Validation failed.", errors);
+            return Result<TransactionDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "categoryId", new[] { "Category does not exist." } }
+                });
         }
 
         if (!string.IsNullOrWhiteSpace(request.Type) && !request.Type.Equals(category.Type, StringComparison.OrdinalIgnoreCase))
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "type", new[] { $"Transaction type '{request.Type}' does not match category type '{category.Type}'." } }
-            };
-            return (false, null, "Validation failed.", errors);
+            return Result<TransactionDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "type", new[] { $"Transaction type '{request.Type}' does not match category type '{category.Type}'." } }
+                });
         }
 
         transaction.Amount = Math.Round(request.Amount, 2);
@@ -215,7 +220,7 @@ public class TransactionService : ITransactionService
             Date = transaction.Date
         };
 
-        return (true, dto, null, null);
+        return Result<TransactionDto>.Success(dto);
     }
 
     public async Task<bool> DeleteAsync(Guid userId, Guid id)

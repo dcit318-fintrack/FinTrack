@@ -1,3 +1,4 @@
+using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Transaction;
 
 namespace FinTrack.Server.Services.Transactions;
@@ -15,11 +16,11 @@ public interface ITransactionService
 
     Task<TransactionDto?> GetByIdAsync(Guid userId, Guid id);
 
-    Task<(bool success, TransactionDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> CreateAsync(
+    Task<Result<TransactionDto>> CreateAsync(
         Guid userId,
         CreateTransactionRequest request);
 
-    Task<(bool success, TransactionDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> UpdateAsync(
+    Task<Result<TransactionDto>> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateTransactionRequest request);

@@ -4,6 +4,7 @@ using FinTrack.Server.Middleware;
 using FinTrack.Server.Models;
 using FinTrack.Server.Services.Auth;
 using FinTrack.Server.Services.Budgets;
+using FinTrack.Server.Services.Categories;
 using FinTrack.Server.Services.Dashboard;
 using FinTrack.Server.Services.Reports;
 using FinTrack.Server.Services.Savings;
@@ -69,6 +70,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ISavingsGoalService, SavingsGoalService>();

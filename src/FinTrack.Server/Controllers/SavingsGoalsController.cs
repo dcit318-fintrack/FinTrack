@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using FinTrack.Server.Services.Savings;
 using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Savings;
@@ -11,26 +9,13 @@ namespace FinTrack.Server.Controllers;
 [ApiController]
 [Route("api/savings-goals")]
 [Authorize]
-public class SavingsGoalsController : ControllerBase
+public class SavingsGoalsController : AuthorizedController
 {
     private readonly ISavingsGoalService _savingsGoalService;
 
     public SavingsGoalsController(ISavingsGoalService savingsGoalService)
     {
         _savingsGoalService = savingsGoalService;
-    }
-
-    private Guid GetUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-        if (Guid.TryParse(userIdClaim, out var userId))
-        {
-            return userId;
-        }
-
-        throw new UnauthorizedAccessException("User identity not found.");
     }
 
     [HttpGet]
@@ -48,17 +33,17 @@ public class SavingsGoalsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateSavingsGoalRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage, errors) = await _savingsGoalService.CreateAsync(userId, request);
-        if (!success)
+        var result = await _savingsGoalService.CreateAsync(userId, request);
+        if (!result.IsSuccess)
         {
             return BadRequest(new ErrorResponse
             {
-                Message = errorMessage ?? "Failed to create savings goal.",
-                Errors = errors
+                Message = result.ErrorMessage ?? "Failed to create savings goal.",
+                Errors = result.ValidationErrors
             });
         }
 
-        return StatusCode(StatusCodes.Status201Created, dto);
+        return StatusCode(StatusCodes.Status201Created, result.Data);
     }
 
     [HttpPut("{id:guid}")]
@@ -67,13 +52,13 @@ public class SavingsGoalsController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSavingsGoalRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage) = await _savingsGoalService.UpdateAsync(userId, id, request);
-        if (!success)
+        var result = await _savingsGoalService.UpdateAsync(userId, id, request);
+        if (!result.IsSuccess)
         {
             return NotFound();
         }
 
-        return Ok(dto);
+        return Ok(result.Data);
     }
 
     [HttpPost("{id:guid}/contribute")]
@@ -82,13 +67,13 @@ public class SavingsGoalsController : ControllerBase
     public async Task<IActionResult> Contribute(Guid id, [FromBody] ContributeRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage) = await _savingsGoalService.ContributeAsync(userId, id, request);
-        if (!success)
+        var result = await _savingsGoalService.ContributeAsync(userId, id, request);
+        if (!result.IsSuccess)
         {
             return NotFound();
         }
 
-        return Ok(dto);
+        return Ok(result.Data);
     }
 
     [HttpDelete("{id:guid}")]

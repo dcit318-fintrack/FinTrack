@@ -1,5 +1,6 @@
 using FinTrack.Server.Data;
 using FinTrack.Server.Models;
+using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Savings;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,17 +26,18 @@ public class SavingsGoalService : ISavingsGoalService
         return goals.Select(MapToDto).ToList();
     }
 
-    public async Task<(bool success, SavingsGoalDto? dto, string? errorMessage, Dictionary<string, string[]>? errors)> CreateAsync(
+    public async Task<Result<SavingsGoalDto>> CreateAsync(
         Guid userId,
         CreateSavingsGoalRequest request)
     {
         if (request.TargetDate <= DateTime.UtcNow)
         {
-            var errors = new Dictionary<string, string[]>
-            {
-                { "targetDate", new[] { "Target date must be in the future." } }
-            };
-            return (false, null, "Validation failed.", errors);
+            return Result<SavingsGoalDto>.Failure(
+                "Validation failed.",
+                new Dictionary<string, string[]>
+                {
+                    { "targetDate", new[] { "Target date must be in the future." } }
+                });
         }
 
         var goal = new SavingsGoal
@@ -53,10 +55,10 @@ public class SavingsGoalService : ISavingsGoalService
         _dbContext.SavingsGoals.Add(goal);
         await _dbContext.SaveChangesAsync();
 
-        return (true, MapToDto(goal), null, null);
+        return Result<SavingsGoalDto>.Success(MapToDto(goal));
     }
 
-    public async Task<(bool success, SavingsGoalDto? dto, string? errorMessage)> UpdateAsync(
+    public async Task<Result<SavingsGoalDto>> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateSavingsGoalRequest request)
@@ -66,7 +68,7 @@ public class SavingsGoalService : ISavingsGoalService
 
         if (goal == null)
         {
-            return (false, null, "Savings goal not found.");
+            return Result<SavingsGoalDto>.Failure("Savings goal not found.");
         }
 
         goal.Name = request.Name;
@@ -80,10 +82,10 @@ public class SavingsGoalService : ISavingsGoalService
 
         await _dbContext.SaveChangesAsync();
 
-        return (true, MapToDto(goal), null);
+        return Result<SavingsGoalDto>.Success(MapToDto(goal));
     }
 
-    public async Task<(bool success, SavingsGoalDto? dto, string? errorMessage)> ContributeAsync(
+    public async Task<Result<SavingsGoalDto>> ContributeAsync(
         Guid userId,
         Guid id,
         ContributeRequest request)
@@ -93,7 +95,7 @@ public class SavingsGoalService : ISavingsGoalService
 
         if (goal == null)
         {
-            return (false, null, "Savings goal not found.");
+            return Result<SavingsGoalDto>.Failure("Savings goal not found.");
         }
 
         goal.CurrentAmount += Math.Round(request.Amount, 2);
@@ -101,7 +103,7 @@ public class SavingsGoalService : ISavingsGoalService
 
         await _dbContext.SaveChangesAsync();
 
-        return (true, MapToDto(goal), null);
+        return Result<SavingsGoalDto>.Success(MapToDto(goal));
     }
 
     public async Task<bool> DeleteAsync(Guid userId, Guid id)

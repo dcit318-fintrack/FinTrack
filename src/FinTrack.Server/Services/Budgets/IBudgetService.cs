@@ -1,4 +1,5 @@
 using FinTrack.Shared.DTOs.Budget;
+using FinTrack.Shared.DTOs.Common;
 
 namespace FinTrack.Server.Services.Budgets;
 
@@ -6,11 +7,11 @@ public interface IBudgetService
 {
     Task<List<BudgetDto>> GetBudgetsAsync(Guid userId, string month);
 
-    Task<(bool success, BudgetDto? dto, string? errorMessage, Dictionary<string, string[]>? errors, bool isConflict)> CreateAsync(
+    Task<Result<BudgetDto>> CreateAsync(
         Guid userId,
         CreateBudgetRequest request);
 
-    Task<(bool success, BudgetDto? dto, string? errorMessage)> UpdateAsync(
+    Task<Result<BudgetDto>> UpdateAsync(
         Guid userId,
         Guid id,
         UpdateBudgetRequest request);

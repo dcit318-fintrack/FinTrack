@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using FinTrack.Server.Services.Transactions;
 using FinTrack.Shared.DTOs.Common;
 using FinTrack.Shared.DTOs.Transaction;
@@ -11,26 +9,13 @@ namespace FinTrack.Server.Controllers;
 [ApiController]
 [Route("api/transactions")]
 [Authorize]
-public class TransactionsController : ControllerBase
+public class TransactionsController : AuthorizedController
 {
     private readonly ITransactionService _transactionService;
 
     public TransactionsController(ITransactionService transactionService)
     {
         _transactionService = transactionService;
-    }
-
-    private Guid GetUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-        if (Guid.TryParse(userIdClaim, out var userId))
-        {
-            return userId;
-        }
-
-        throw new UnauthorizedAccessException("User identity not found.");
     }
 
     [HttpGet]
@@ -68,17 +53,17 @@ public class TransactionsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateTransactionRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage, errors) = await _transactionService.CreateAsync(userId, request);
-        if (!success)
+        var result = await _transactionService.CreateAsync(userId, request);
+        if (!result.IsSuccess)
         {
             return BadRequest(new ErrorResponse
             {
-                Message = errorMessage ?? "Failed to create transaction.",
-                Errors = errors
+                Message = result.ErrorMessage ?? "Failed to create transaction.",
+                Errors = result.ValidationErrors
             });
         }
 
-        return CreatedAtAction(nameof(GetById), new { id = dto!.Id }, dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data);
     }
 
     [HttpPut("{id:guid}")]
@@ -88,22 +73,22 @@ public class TransactionsController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTransactionRequest request)
     {
         var userId = GetUserId();
-        var (success, dto, errorMessage, errors) = await _transactionService.UpdateAsync(userId, id, request);
-        if (!success)
+        var result = await _transactionService.UpdateAsync(userId, id, request);
+        if (!result.IsSuccess)
         {
-            if (errorMessage == "Transaction not found.")
+            if (result.ErrorMessage == "Transaction not found.")
             {
                 return NotFound();
             }
 
             return BadRequest(new ErrorResponse
             {
-                Message = errorMessage ?? "Failed to update transaction.",
-                Errors = errors
+                Message = result.ErrorMessage ?? "Failed to update transaction.",
+                Errors = result.ValidationErrors
             });
         }
 
-        return Ok(dto);
+        return Ok(result.Data);
     }
 
     [HttpDelete("{id:guid}")]

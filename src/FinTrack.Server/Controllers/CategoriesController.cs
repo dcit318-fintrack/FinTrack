@@ -1,79 +1,45 @@
-using FinTrack.Server.Data;
-using FinTrack.Server.Models;
-using FinTrack.Shared.DTOs.Category;
+using FinTrack.Server.Services.Categories;
 using FinTrack.Shared.DTOs.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Server.Controllers;
 
 [ApiController]
 [Route("api/categories")]
 [Authorize]
-public class CategoriesController : ControllerBase
+public class CategoriesController : AuthorizedController
 {
-    private readonly FinTrackDbContext _dbContext;
+    private readonly ICategoryService _categoryService;
 
-    public CategoriesController(FinTrackDbContext dbContext)
+    public CategoriesController(ICategoryService categoryService)
     {
-        _dbContext = dbContext;
+        _categoryService = categoryService;
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(List<CategoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<FinTrack.Shared.DTOs.Category.CategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCategories()
     {
-        var categories = await _dbContext.Categories
-            .AsNoTracking()
-            .Select(c => new CategoryDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Type = c.Type
-            })
-            .ToListAsync();
-
+        var categories = await _categoryService.GetCategoriesAsync();
         return Ok(categories);
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(FinTrack.Shared.DTOs.Category.CategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
+    public async Task<IActionResult> CreateCategory([FromBody] FinTrack.Shared.DTOs.Category.CreateCategoryRequest request)
     {
-        var nameNormalized = request.Name.Trim();
-        var typeNormalized = request.Type.Equals("Income", StringComparison.OrdinalIgnoreCase) ? "Income" : "Expense";
-
-        var exists = await _dbContext.Categories
-            .AnyAsync(c => c.Name.ToLower() == nameNormalized.ToLower());
-
-        if (exists)
+        var result = await _categoryService.CreateCategoryAsync(request);
+        if (!result.IsSuccess)
         {
-            var errors = new Dictionary<string, string[]>
+            return BadRequest(new ErrorResponse
             {
-                { "name", new[] { $"Category '{nameNormalized}' already exists." } }
-            };
-            return BadRequest(new ErrorResponse { Message = "Validation failed.", Errors = errors });
+                Message = result.ErrorMessage ?? "Validation failed.",
+                Errors = result.ValidationErrors
+            });
         }
 
-        var category = new Category
-        {
-            Id = Guid.NewGuid(),
-            Name = nameNormalized,
-            Type = typeNormalized
-        };
-
-        _dbContext.Categories.Add(category);
-        await _dbContext.SaveChangesAsync();
-
-        var dto = new CategoryDto
-        {
-            Id = category.Id,
-            Name = category.Name,
-            Type = category.Type
-        };
-
-        return CreatedAtAction(nameof(GetCategories), new { id = dto.Id }, dto);
+        return StatusCode(StatusCodes.Status201Created, result.Data);
     }
 }
