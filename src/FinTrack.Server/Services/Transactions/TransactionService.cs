@@ -48,7 +48,7 @@ public class TransactionService : ITransactionService
 
         if (!string.IsNullOrWhiteSpace(type))
         {
-            query = query.Where(t => t.Type.ToLower() == type.ToLower());
+            query = query.Where(t => string.Equals(t.Type, type, StringComparison.OrdinalIgnoreCase));
         }
 
         var totalCount = await query.CountAsync();
