@@ -19,10 +19,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public (string token, DateTime expiresAt) GenerateToken(ApplicationUser user)
     {
-        var secret = _config["Jwt:Secret"];
-        if (string.IsNullOrWhiteSpace(secret) || secret.Length < 32)
+        var secret = _config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret is not configured. Set it via environment variable or appsettings.");
+
+        if (secret.Length < 32)
         {
-            secret = "FinTrack_Super_Secret_Key_For_Jwt_Token_Generation_2026_Must_Be_Long_Enough!";
+            throw new InvalidOperationException("Jwt:Secret must be at least 32 characters long.");
         }
 
         var issuer = _config["Jwt:Issuer"] ?? "FinTrackServer";

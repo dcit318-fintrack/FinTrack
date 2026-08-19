@@ -10,6 +10,7 @@ using FinTrack.Server.Services.Savings;
 using FinTrack.Server.Services.Transactions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -29,17 +30,19 @@ builder.Services.AddDbContext<FinTrackDbContext>(options =>
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.Password.RequireDigit = false;
-        options.Password.RequireLowercase = false;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
         options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequireUppercase = false;
-        options.Password.RequiredLength = 6;
+        options.Password.RequireUppercase = true;
+        options.Password.RequiredLength = 8;
         options.User.RequireUniqueEmail = true;
     })
     .AddEntityFrameworkStores<FinTrackDbContext>()
     .AddDefaultTokenProviders();
 
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "FinTrack_Super_Secret_Key_For_Jwt_Token_Generation_2026_Must_Be_Long_Enough!";
+var jwtSecret = builder.Configuration["Jwt:Secret"]
+    ?? throw new InvalidOperationException(
+        "Jwt:Secret is not configured. Set it via environment variable (Jwt__Secret) or appsettings.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "FinTrackServer";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "FinTrackClient";
 
@@ -50,7 +53,7 @@ builder.Services.AddAuthentication(options =>
     })
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false;
+        options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -77,11 +80,27 @@ builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowConfiguredOrigins", policy =>
     {
-        policy.AllowAnyOrigin()
+        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? ["http://localhost:5000", "https://localhost:5001"];
+
+        policy.WithOrigins(origins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("auth", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 10;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
     });
 });
 
@@ -102,7 +121,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowConfiguredOrigins");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

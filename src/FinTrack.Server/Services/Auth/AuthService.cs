@@ -52,7 +52,7 @@ public class AuthService : IAuthService
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
         var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
-        user.RefreshToken = refreshToken;
+        user.RefreshToken = RefreshTokenHelper.HashToken(refreshToken);
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
         await _userManager.UpdateAsync(user);
 
@@ -86,7 +86,7 @@ public class AuthService : IAuthService
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
         var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
-        user.RefreshToken = refreshToken;
+        user.RefreshToken = RefreshTokenHelper.HashToken(refreshToken);
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
         await _userManager.UpdateAsync(user);
 
@@ -110,7 +110,8 @@ public class AuthService : IAuthService
             return (false, null, "Invalid refresh token.");
         }
 
-        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+        var hashedToken = RefreshTokenHelper.HashToken(request.RefreshToken);
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == hashedToken);
         if (user == null || user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
             return (false, null, "Invalid or expired refresh token.");
@@ -119,7 +120,7 @@ public class AuthService : IAuthService
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
         var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
-        user.RefreshToken = newRefreshToken;
+        user.RefreshToken = RefreshTokenHelper.HashToken(newRefreshToken);
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
         await _userManager.UpdateAsync(user);
 
