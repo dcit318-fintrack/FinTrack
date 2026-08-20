@@ -333,7 +333,7 @@ public class FinTrackApiService : IFinTrackApiService
             Id = Guid.NewGuid(),
             Amount = request.Amount,
             Type = request.Type,
-            CategoryId = request.CategoryId,
+            CategoryId = request.CategoryId ?? Guid.Empty,
             CategoryName = category?.Name ?? "Other",
             Description = request.Description,
             Date = request.Date
@@ -372,7 +372,7 @@ public class FinTrackApiService : IFinTrackApiService
         var category = _categories.FirstOrDefault(c => c.Id == request.CategoryId);
         existing.Amount = request.Amount;
         existing.Type = request.Type;
-        existing.CategoryId = request.CategoryId;
+        existing.CategoryId = request.CategoryId ?? Guid.Empty;
         existing.CategoryName = category?.Name ?? existing.CategoryName;
         existing.Description = request.Description;
         existing.Date = request.Date;
@@ -500,7 +500,7 @@ public class FinTrackApiService : IFinTrackApiService
         var budget = new BudgetDto
         {
             Id = Guid.NewGuid(),
-            CategoryId = request.CategoryId,
+            CategoryId = request.CategoryId ?? Guid.Empty,
             CategoryName = category?.Name ?? "General",
             Limit = request.Limit,
             Spent = 0m,
