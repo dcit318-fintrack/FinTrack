@@ -1,0 +1,211 @@
+@page "/transactions"
+@namespace FinTrack.Client.Pages
+@inject IFinTrackApiService ApiService
+@implements IDisposable
+
+<div class="transactions-page">
+    <h1 class="page-main-title">Transactions</h1>
+
+    <!-- Search & Filter Bar -->
+    <div class="search-filter-bar">
+        <div class="search-input-wrapper">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" class="search-input" placeholder="Search transactions..." 
+                   @bind-value="searchQuery" @bind-value:event="oninput" @bind-value:after="HandleSearch" />
+        </div>
+
+        <button class="filter-button @(selectedTypeFilter != "All" ? "active" : "")" @onclick="CycleFilter" title="Filter by Type">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="4" y1="6" x2="20" y2="6"></line>
+                <line x1="7" y1="12" x2="17" y2="12"></line>
+                <line x1="10" y1="18" x2="14" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    @if (selectedTypeFilter != "All")
+    {
+        <div style="margin-bottom: 12px; font-size: 13px; color: var(--primary-green-dark); font-weight: 600;">
+            Filtering: @selectedTypeFilter transactions (<a href="javascript:void(0)" @onclick='() => SetFilter("All")' style="color: var(--text-muted); text-decoration: underline;">Reset</a>)
+        </div>
+    }
+
+    <!-- Grouped Transactions List -->
+    @if (todayTransactions.Any())
+    {
+        <div class="date-group-header">TODAY</div>
+        <div class="transaction-card-wrapper">
+            <div class="transaction-list">
+                @foreach (var tx in todayTransactions)
+                {
+                    <div class="transaction-item" @onclick="() => OpenEditTx(tx)">
+                        <div class="transaction-left">
+                            <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
+                            <div class="transaction-info">
+                                <span class="transaction-name">@tx.Description</span>
+                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToString("hh:mm tt")</span>
+                            </div>
+                        </div>
+                        <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
+                            @(tx.Type == "Income" ? "+" : "-")@tx.Amount.ToString("C2")
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (yesterdayTransactions.Any())
+    {
+        <div class="date-group-header">YESTERDAY</div>
+        <div class="transaction-card-wrapper">
+            <div class="transaction-list">
+                @foreach (var tx in yesterdayTransactions)
+                {
+                    <div class="transaction-item" @onclick="() => OpenEditTx(tx)">
+                        <div class="transaction-left">
+                            <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
+                            <div class="transaction-info">
+                                <span class="transaction-name">@tx.Description</span>
+                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToString("hh:mm tt")</span>
+                            </div>
+                        </div>
+                        <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
+                            @(tx.Type == "Income" ? "+" : "-")@tx.Amount.ToString("C2")
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (earlierTransactions.Any())
+    {
+        <div class="date-group-header">EARLIER</div>
+        <div class="transaction-card-wrapper">
+            <div class="transaction-list">
+                @foreach (var tx in earlierTransactions)
+                {
+                    <div class="transaction-item" @onclick="() => OpenEditTx(tx)">
+                        <div class="transaction-left">
+                            <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
+                            <div class="transaction-info">
+                                <span class="transaction-name">@tx.Description</span>
+                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToString("MMM d, hh:mm tt")</span>
+                            </div>
+                        </div>
+                        <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
+                            @(tx.Type == "Income" ? "+" : "-")@tx.Amount.ToString("C2")
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (!todayTransactions.Any() && !yesterdayTransactions.Any() && !earlierTransactions.Any())
+    {
+        <div class="fintrack-card" style="text-align: center; padding: 40px 20px;">
+            <p style="color: var(--text-muted); font-size: 15px; font-weight: 500;">No transactions found.</p>
+            <button class="btn-primary-action" style="max-width: 200px; margin: 16px auto 0 auto;" @onclick="OpenAddTx">
+                + Add Transaction
+            </button>
+        </div>
+    }
+
+    <!-- Floating Action Button (FAB) -->
+    <div class="fab-container">
+        <button class="fab-button" @onclick="OpenAddTx" title="Add Transaction" aria-label="Add Transaction">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<TransactionModal @bind-IsOpen="isTxModalOpen" TransactionToEdit="selectedTx" OnSaved="LoadTransactions" />
+
+@code {
+    private string searchQuery = string.Empty;
+    private string selectedTypeFilter = "All"; // "All" | "Expense" | "Income"
+    private List<TransactionDto> allTransactions = new();
+    private List<TransactionDto> todayTransactions = new();
+    private List<TransactionDto> yesterdayTransactions = new();
+    private List<TransactionDto> earlierTransactions = new();
+
+    private bool isTxModalOpen;
+    private TransactionDto? selectedTx;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiService.OnDataChanged += HandleDataChanged;
+        await LoadTransactions();
+    }
+
+    private async Task LoadTransactions()
+    {
+        var result = await ApiService.GetTransactionsAsync(
+            search: string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
+            type: selectedTypeFilter == "All" ? null : selectedTypeFilter
+        );
+
+        allTransactions = result.Items;
+        GroupTransactions();
+        StateHasChanged();
+    }
+
+    private void GroupTransactions()
+    {
+        todayTransactions = allTransactions.Where(t => t.Date.Date == DateTime.Today).ToList();
+        yesterdayTransactions = allTransactions.Where(t => t.Date.Date == DateTime.Today.AddDays(-1)).ToList();
+        earlierTransactions = allTransactions.Where(t => t.Date.Date < DateTime.Today.AddDays(-1)).ToList();
+    }
+
+    private void HandleDataChanged()
+    {
+        InvokeAsync(async () => await LoadTransactions());
+    }
+
+    private async Task HandleSearch()
+    {
+        await LoadTransactions();
+    }
+
+    private async Task CycleFilter()
+    {
+        selectedTypeFilter = selectedTypeFilter switch
+        {
+            "All" => "Expense",
+            "Expense" => "Income",
+            _ => "All"
+        };
+        await LoadTransactions();
+    }
+
+    private async Task SetFilter(string type)
+    {
+        selectedTypeFilter = type;
+        await LoadTransactions();
+    }
+
+    private void OpenAddTx()
+    {
+        selectedTx = null;
+        isTxModalOpen = true;
+    }
+
+    private void OpenEditTx(TransactionDto tx)
+    {
+        selectedTx = tx;
+        isTxModalOpen = true;
+    }
+
+    public void Dispose()
+    {
+        ApiService.OnDataChanged -= HandleDataChanged;
+    }
+}
