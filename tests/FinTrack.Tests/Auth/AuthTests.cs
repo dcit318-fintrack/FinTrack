@@ -104,7 +104,7 @@ public class AuthTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task ProtectedEndpoint_WithMalformedToken_Returns401()
     {
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "notavalidjwt");
         var response = await client.GetAsync("/api/transactions");

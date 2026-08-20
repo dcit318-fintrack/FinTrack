@@ -8,11 +8,11 @@ namespace FinTrack.Tests;
 public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 {
     protected readonly HttpClient Client;
-    private readonly WebApplicationFactory<Program> _factory;
+    protected readonly WebApplicationFactory<Program> Factory;
 
     protected IntegrationTestBase(WebApplicationFactory<Program> factory)
     {
-        _factory = factory;
+        Factory = factory;
         Client = factory.CreateClient();
     }
 
@@ -36,7 +36,7 @@ public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<
 
     protected HttpClient AuthenticatedClient(string token)
     {
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
         return client;
