@@ -32,12 +32,26 @@ public class ReportsTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task SpendingByCategory_MissingDates_Returns400()
+    public async Task SpendingByCategory_MissingDates_DefaultsToCurrentMonth()
     {
         var token = await RegisterAndGetTokenAsync();
         using var client = AuthenticatedClient(token);
 
         var response = await client.GetAsync("/api/reports/spending-by-category");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("from", out _));
+        Assert.True(body.TryGetProperty("to", out _));
+    }
+
+    [Fact]
+    public async Task SpendingByCategory_OnlyFromDate_Returns400()
+    {
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.GetAsync("/api/reports/spending-by-category?from=2026-08-01");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
