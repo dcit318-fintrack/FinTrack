@@ -17,10 +17,12 @@ public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<
     }
 
     protected async Task<string> RegisterAndGetTokenAsync(
-        string email = "test@example.com",
+        string? email = null,
         string password = "Password1!",
         string fullName = "Test User")
     {
+        email ??= $"test_{Guid.NewGuid():N}@example.com";
+
         var response = await Client.PostAsJsonAsync("/api/auth/register", new
         {
             email,
@@ -28,7 +30,12 @@ public abstract class IntegrationTestBase : IClassFixture<WebApplicationFactory<
             fullName
         });
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new Exception(
+                $"Registration failed with {response.StatusCode}: {errorBody}");
+        }
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         return body.GetProperty("accessToken").GetString()!;
