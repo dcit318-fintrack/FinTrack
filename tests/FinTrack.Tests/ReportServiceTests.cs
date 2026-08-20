@@ -2,7 +2,7 @@ using FinTrack.Server.Data;
 using FinTrack.Server.Models;
 using FinTrack.Server.Services.Reports;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace FinTrack.Tests;
