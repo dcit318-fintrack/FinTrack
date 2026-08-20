@@ -82,7 +82,7 @@ public class AuthTests(WebApplicationFactory<Program> factory)
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        Assert.Equal("Invalid email or password", body.GetProperty("message").GetString());
+        Assert.Equal("Invalid email or password.", body.GetProperty("message").GetString());
     }
 
     [Fact]
