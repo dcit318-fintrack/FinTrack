@@ -6,6 +6,7 @@ using FinTrack.Shared.DTOs.Dashboard;
 using FinTrack.Shared.DTOs.Report;
 using FinTrack.Shared.DTOs.Savings;
 using FinTrack.Shared.DTOs.Transaction;
+using FinTrack.Shared.DTOs.Common;
 
 namespace FinTrack.Client.Services;
 
