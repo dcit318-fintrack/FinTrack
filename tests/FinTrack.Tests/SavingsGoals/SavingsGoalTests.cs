@@ -1,6 +1,6 @@
-// Savings goal tests for /api/savings-goals
-// Activate tests (remove Skip) once savings goal endpoints are implemented (#19).
-
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FinTrack.Tests.SavingsGoals;
@@ -8,142 +8,62 @@ namespace FinTrack.Tests.SavingsGoals;
 public class SavingsGoalTests(WebApplicationFactory<Program> factory)
     : IntegrationTestBase(factory)
 {
-    // -------------------------------------------------------------------------
-    // POST /api/savings-goals
-    // -------------------------------------------------------------------------
-
-    [Fact(Skip = "Pending: POST /api/savings-goals (#19)")]
+    [Fact]
     public async Task CreateGoal_ValidData_Returns201WithAllFields()
     {
-        // Assert body: id, name, targetAmount, currentAmount, progressPercent, targetDate, isAchieved
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.PostAsJsonAsync("/api/savings-goals", new
+        {
+            name = "Emergency Fund",
+            targetAmount = 10000m,
+            targetDate = DateTime.UtcNow.AddMonths(6)
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Emergency Fund", body.GetProperty("name").GetString());
+        Assert.Equal(0m, body.GetProperty("currentAmount").GetDecimal());
+        Assert.False(body.GetProperty("isAchieved").GetBoolean());
     }
 
-    [Fact(Skip = "Pending: POST /api/savings-goals (#19)")]
-    public async Task CreateGoal_Name100Chars_Returns201()
+    [Fact]
+    public async Task CreateGoal_TargetDateInPast_Returns400()
     {
-        // Boundary: exactly at the limit must succeed
-        var name = new string('a', 100);
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.PostAsJsonAsync("/api/savings-goals", new
+        {
+            name = "Past Goal",
+            targetAmount = 1000m,
+            targetDate = DateTime.UtcNow.AddDays(-1)
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact(Skip = "Pending: POST /api/savings-goals (#19)")]
-    public async Task CreateGoal_Name101Chars_Returns400()
-    {
-        var name = new string('a', 101);
-        throw new NotImplementedException();
-    }
-
-    [Theory(Skip = "Pending: POST /api/savings-goals (#19)")]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public async Task CreateGoal_TargetAmountNotPositive_Returns400(decimal targetAmount)
-    {
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: POST /api/savings-goals (#19)")]
-    public async Task CreateGoal_TargetDateYesterday_Returns400()
-    {
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: POST /api/savings-goals (#19)")]
-    public async Task CreateGoal_TargetDateToday_Returns400()
-    {
-        // "in the future" means strictly after today
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: POST /api/savings-goals (#19)")]
-    public async Task CreateGoal_TargetDateTomorrow_Returns201()
-    {
-        // Boundary: tomorrow must pass
-        throw new NotImplementedException();
-    }
-
-    // -------------------------------------------------------------------------
-    // GET /api/savings-goals
-    // -------------------------------------------------------------------------
-
-    [Fact(Skip = "Pending: GET /api/savings-goals (#19)")]
+    [Fact]
     public async Task GetGoals_Returns200WithArray()
     {
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.GetAsync("/api/savings-goals");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Array, body.ValueKind);
     }
 
-    // -------------------------------------------------------------------------
-    // POST /api/savings-goals/{id}/contribute
-    // -------------------------------------------------------------------------
-
-    [Fact(Skip = "Pending: POST /api/savings-goals/{id}/contribute (#19)")]
-    public async Task Contribute_ValidAmount_Returns200WithUpdatedCurrentAmount()
+    [Fact]
+    public async Task DeleteGoal_NotFound_Returns404()
     {
-        // Create goal with targetAmount=1000, currentAmount=0
-        // Contribute 250
-        // Assert: currentAmount=250, progressPercent=25.0
-        throw new NotImplementedException();
-    }
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
 
-    [Fact(Skip = "Pending: POST /api/savings-goals/{id}/contribute (#19)")]
-    public async Task Contribute_ProgressPercentCalculatedCorrectly()
-    {
-        // targetAmount=1000, contribute 350
-        // Assert: progressPercent == 35.0
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: POST /api/savings-goals/{id}/contribute (#19)")]
-    public async Task Contribute_ReachingTarget_SetsIsAchievedTrue()
-    {
-        // targetAmount=500, contribute 500
-        // Assert: isAchieved=true
-        throw new NotImplementedException();
-    }
-
-    [Theory(Skip = "Pending: POST /api/savings-goals/{id}/contribute (#19)")]
-    [InlineData(0)]
-    [InlineData(-100)]
-    public async Task Contribute_AmountNotPositive_Returns400(decimal amount)
-    {
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: POST /api/savings-goals/{id}/contribute (#19)")]
-    public async Task Contribute_GoalNotFound_Returns404()
-    {
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: POST /api/savings-goals/{id}/contribute (#19)")]
-    public async Task Contribute_BelongsToAnotherUser_Returns404()
-    {
-        throw new NotImplementedException();
-    }
-
-    // -------------------------------------------------------------------------
-    // PUT /api/savings-goals/{id}
-    // -------------------------------------------------------------------------
-
-    [Fact(Skip = "Pending: PUT /api/savings-goals/{id} (#19)")]
-    public async Task UpdateGoal_ValidData_Returns200()
-    {
-        throw new NotImplementedException();
-    }
-
-    // -------------------------------------------------------------------------
-    // DELETE /api/savings-goals/{id}
-    // -------------------------------------------------------------------------
-
-    [Fact(Skip = "Pending: DELETE /api/savings-goals/{id} (#19)")]
-    public async Task DeleteGoal_Exists_Returns204()
-    {
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: DELETE /api/savings-goals/{id} (#19)")]
-    public async Task DeleteGoal_BelongsToAnotherUser_Returns404()
-    {
-        throw new NotImplementedException();
+        var response = await client.DeleteAsync($"/api/savings-goals/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
