@@ -9,10 +9,12 @@ namespace FinTrack.Server.Services.Transactions;
 public class TransactionService : ITransactionService
 {
     private readonly FinTrackDbContext _dbContext;
+    private readonly ILogger<TransactionService> _logger;
 
-    public TransactionService(FinTrackDbContext dbContext)
+    public TransactionService(FinTrackDbContext dbContext, ILogger<TransactionService> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<PagedResult<TransactionDto>> GetTransactionsAsync(
@@ -147,6 +149,8 @@ public class TransactionService : ITransactionService
         _dbContext.Transactions.Add(transaction);
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Transaction created: {Id} for user {UserId}", transaction.Id, userId);
+
         var dto = new TransactionDto
         {
             Id = transaction.Id,
@@ -204,6 +208,8 @@ public class TransactionService : ITransactionService
 
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Transaction updated: {Id} for user {UserId}", id, userId);
+
         var dto = new TransactionDto
         {
             Id = transaction.Id,
@@ -230,6 +236,9 @@ public class TransactionService : ITransactionService
 
         _dbContext.Transactions.Remove(transaction);
         await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Transaction deleted: {Id} for user {UserId}", id, userId);
+
         return true;
     }
 }

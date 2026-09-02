@@ -1,4 +1,4 @@
-namespace FinTrack.Shared.DTOs.Transaction;
+namespace FinTrack.Shared.DTOs.Common;
 
 public class PagedResult<T>
 {

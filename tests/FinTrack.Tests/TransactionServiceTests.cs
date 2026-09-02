@@ -3,6 +3,7 @@ using FinTrack.Server.Models;
 using FinTrack.Server.Services.Transactions;
 using FinTrack.Shared.DTOs.Transaction;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace FinTrack.Tests;
@@ -25,7 +26,7 @@ public class TransactionServiceTests
     {
         // Arrange
         using var context = GetInMemoryDbContext();
-        var service = new TransactionService(context);
+        var service = new TransactionService(context, NullLogger<TransactionService>.Instance);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
