@@ -140,6 +140,7 @@ public class BudgetService : IBudgetService
         budget.Limit = Math.Round(request.Limit, 2);
         await _dbContext.SaveChangesAsync();
 
+        var spent = await GetSpentAmountAsync(userId, budget.CategoryId, budget.Month);
         _logger.LogInformation("Budget updated: {Id} for user {UserId}", id, userId);
 
         var dto = new BudgetDto
@@ -148,8 +149,8 @@ public class BudgetService : IBudgetService
             CategoryId = budget.CategoryId,
             CategoryName = budget.Category.Name,
             Limit = budget.Limit,
-            Spent = 0m,
-            Remaining = budget.Limit,
+            Spent = spent,
+            Remaining = budget.Limit - spent,
             Month = budget.Month
         };
 
@@ -172,5 +173,24 @@ public class BudgetService : IBudgetService
         _logger.LogInformation("Budget deleted: {Id} for user {UserId}", id, userId);
 
         return true;
+    }
+
+    private async Task<decimal> GetSpentAmountAsync(Guid userId, Guid categoryId, string month)
+    {
+        if (!DateTime.TryParseExact(month + "-01", "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var startDate))
+        {
+            return 0m;
+        }
+
+        var endDate = startDate.AddMonths(1).AddTicks(-1);
+
+        return await _dbContext.Transactions
+            .AsNoTracking()
+            .Where(t => t.UserId == userId &&
+                        t.CategoryId == categoryId &&
+                        t.Type == "Expense" &&
+                        t.Date >= startDate &&
+                        t.Date <= endDate)
+            .SumAsync(t => t.Amount);
     }
 }

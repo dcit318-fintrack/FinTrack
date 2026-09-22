@@ -46,7 +46,7 @@ public class CategoriesController : ControllerBase
         var typeNormalized = request.Type.Equals("Income", StringComparison.OrdinalIgnoreCase) ? "Income" : "Expense";
 
         var exists = await _dbContext.Categories
-            .AnyAsync(c => c.Name.ToLower() == nameNormalized.ToLower());
+            .AnyAsync(c => string.Equals(c.Name, nameNormalized, StringComparison.OrdinalIgnoreCase));
 
         if (exists)
         {
