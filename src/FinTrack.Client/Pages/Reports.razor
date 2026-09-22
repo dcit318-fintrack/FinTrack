@@ -1,0 +1,156 @@
+@page "/reports"
+@namespace FinTrack.Client.Pages
+@inject IFinTrackApiService ApiService
+@inject NavigationManager Nav
+
+<div class="reports-page">
+    <h1 class="page-main-title" style="margin-bottom: 4px;">Financial Reports</h1>
+    <p class="page-subtitle">Analyze your spending and income trends.</p>
+
+    <!-- Time Filter Pills -->
+    <div class="segmented-control">
+        <button class="segment-btn @(selectedTimeRange == "month" ? "active" : "")" 
+                @onclick='() => SelectRange("month")'>This Month</button>
+        <button class="segment-btn @(selectedTimeRange == "6months" ? "active" : "")" 
+                @onclick='() => SelectRange("6months")'>Last 6 Months</button>
+        <button class="segment-btn @(selectedTimeRange == "ytd" ? "active" : "")" 
+                @onclick='() => SelectRange("ytd")'>YTD</button>
+    </div>
+
+    <div class="reports-page-grid">
+        <div class="reports-col">
+            <!-- Spending Patterns Card -->
+            <div class="fintrack-card">
+                <h2 class="card-title" style="font-size: 18px; margin-bottom: 14px;">Spending Patterns</h2>
+                
+                <DoughnutChart CanvasId="spendingDonutChartCanvas"
+                               Labels="@donutLabels"
+                               Data="@donutData"
+                               Colors="@donutColors"
+                               TotalSpentFormatted="@("GH₵" + spendingReport.TotalSpent.ToString("N0"))" />
+
+                <div class="chart-legend-grid">
+                    @foreach (var item in spendingReport.Categories)
+                    {
+                        <div class="legend-item">
+                            <div class="legend-left">
+                                <span class="legend-dot" style="background-color: @GetCategoryDotColor(item.CategoryName)"></span>
+                                <span>@item.CategoryName</span>
+                            </div>
+                            <span class="legend-percent">@item.PercentOfTotal.ToString("0")%</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="reports-col">
+            <!-- Income vs Expenses Card -->
+            <div class="fintrack-card">
+                <div class="card-header-row" style="margin-bottom: 12px;">
+                    <h2 class="card-title" style="font-size: 18px; margin: 0;">Income vs Expenses</h2>
+                    <div class="chart-header-legend">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="legend-dot" style="background-color: #047857;"></span>
+                            <span style="color: var(--text-secondary); font-size: 12px;">Income</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="legend-dot" style="background-color: #052E36;"></span>
+                            <span style="color: var(--text-secondary); font-size: 12px;">Expenses</span>
+                        </div>
+                    </div>
+                </div>
+
+                <IncomeExpenseChart CanvasId="incomeExpenseChartCanvas"
+                                    Periods="@incomeExpensePeriods"
+                                    IncomeData="@incomeData"
+                                    ExpenseData="@expenseData" />
+            </div>
+
+            <!-- Top Spending Category Card -->
+            <div class="top-category-card">
+                <div class="top-cat-badge-label">TOP SPENDING CATEGORY</div>
+                <div class="top-cat-body">
+                    <div class="category-icon-circle slate" style="width: 48px; height: 48px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2">
+                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="top-cat-title">Rent</div>
+                        <div class="top-cat-desc"><strong>45%</strong> of total spending this period.</div>
+                    </div>
+                </div>
+
+                <div class="top-cat-footer">
+                    <span class="top-cat-footnote">Consistently your highest expense.</span>
+                    <NavLink href="transactions" class="top-cat-link">
+                        View Details
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string selectedTimeRange = "6months"; // "month" | "6months" | "ytd"
+    private SpendingByCategoryReportDto spendingReport = new();
+    private IncomeVsExpenseReportDto incomeExpenseReport = new();
+
+    private string[] donutLabels = Array.Empty<string>();
+    private decimal[] donutData = Array.Empty<decimal>();
+    private string[] donutColors = new[] { "#052E36", "#047857", "#0E4D5E", "#93C5FD" };
+
+    private string[] incomeExpensePeriods = Array.Empty<string>();
+    private decimal[] incomeData = Array.Empty<decimal>();
+    private decimal[] expenseData = Array.Empty<decimal>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReportData();
+    }
+
+    private async Task SelectRange(string range)
+    {
+        selectedTimeRange = range;
+        await LoadReportData();
+    }
+
+    private async Task LoadReportData()
+    {
+        var now = DateTime.Today;
+        var from = selectedTimeRange switch
+        {
+            "month" => new DateTime(now.Year, now.Month, 1),
+            "ytd" => new DateTime(now.Year, 1, 1),
+            _ => now.AddMonths(-6)
+        };
+
+        spendingReport = await ApiService.GetSpendingByCategoryReportAsync(from, now);
+        incomeExpenseReport = await ApiService.GetIncomeVsExpenseReportAsync(from, now);
+
+        donutLabels = spendingReport.Categories.Select(c => c.CategoryName).ToArray();
+        donutData = spendingReport.Categories.Select(c => c.Amount).ToArray();
+
+        incomeExpensePeriods = incomeExpenseReport.Points.Select(p => p.Period).ToArray();
+        incomeData = incomeExpenseReport.Points.Select(p => p.Income).ToArray();
+        expenseData = incomeExpenseReport.Points.Select(p => p.Expense).ToArray();
+
+        StateHasChanged();
+    }
+
+    private string GetCategoryDotColor(string name)
+    {
+        var lower = name.ToLowerInvariant();
+        if (lower.Contains("rent")) return "#052E36";
+        if (lower.Contains("food")) return "#047857";
+        if (lower.Contains("util")) return "#0E4D5E";
+        if (lower.Contains("fun")) return "#93C5FD";
+        return "#64748B";
+    }
+}

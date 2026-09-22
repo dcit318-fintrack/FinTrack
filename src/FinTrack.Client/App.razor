@@ -1,6 +1,15 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div class="fintrack-card" style="text-align: center; padding: 40px 20px;">
+                <p role="alert" style="color: var(--text-muted); font-size: 15px;">Page not found.</p>
+                <NavLink href="" class="card-action-link" style="margin-top: 12px; display: inline-block;">Return to Dashboard</NavLink>
+            </div>
+        </LayoutView>
+    </NotFound>
 </Router>

@@ -1,6 +1,6 @@
-// Dashboard tests for GET /api/dashboard
-// Activate tests (remove Skip) once the dashboard endpoint is implemented.
-
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FinTrack.Tests.Dashboard;
@@ -8,55 +8,28 @@ namespace FinTrack.Tests.Dashboard;
 public class DashboardTests(WebApplicationFactory<Program> factory)
     : IntegrationTestBase(factory)
 {
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #18 + #19)")]
-    public async Task GetDashboard_Returns200WithAllExpectedFields()
+    [Fact]
+    public async Task GetDashboard_Authenticated_Returns200WithAllExpectedFields()
     {
-        // Assert: totalIncome, totalExpenses, balance, month, recentTransactions, budgetsAtRisk
-        throw new NotImplementedException();
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        var response = await client.GetAsync("/api/dashboard");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("totalIncome", out _));
+        Assert.True(body.TryGetProperty("totalExpenses", out _));
+        Assert.True(body.TryGetProperty("balance", out _));
+        Assert.True(body.TryGetProperty("month", out _));
+        Assert.True(body.TryGetProperty("recentTransactions", out _));
+        Assert.True(body.TryGetProperty("budgetsAtRisk", out _));
     }
 
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #18 + #19)")]
-    public async Task GetDashboard_BalanceCalculation_IsCorrect()
+    [Fact]
+    public async Task GetDashboard_Unauthenticated_Returns401()
     {
-        // Create income=3000, expenses=1000
-        // Assert: balance=2000.00, totalIncome=3000.00, totalExpenses=1000.00
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #18 + #19)")]
-    public async Task GetDashboard_RecentTransactions_CappedAtFive()
-    {
-        // Add 10 transactions
-        // Assert: recentTransactions.Length == 5
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #19)")]
-    public async Task GetDashboard_BudgetsAtRisk_IncludesAt80Percent()
-    {
-        // Budget limit=500, spent=400 (exactly 80%) → must be in budgetsAtRisk
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #19)")]
-    public async Task GetDashboard_BudgetsAtRisk_ExcludesBelow80Percent()
-    {
-        // Budget limit=500, spent=399 (79.8%) → must NOT be in budgetsAtRisk
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #19)")]
-    public async Task GetDashboard_BudgetsAtRisk_HasCorrectShape()
-    {
-        // Assert each item has: categoryName, limit, spent, percentUsed
-        throw new NotImplementedException();
-    }
-
-    [Fact(Skip = "Pending: GET /api/dashboard (depends on #18 + #19)")]
-    public async Task GetDashboard_FilterByMonth_ReturnsOnlyThatMonthData()
-    {
-        // Create data in two different months; request ?month=2026-07
-        // Assert: only July income/expenses/budgets returned
-        throw new NotImplementedException();
+        var response = await Client.GetAsync("/api/dashboard");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

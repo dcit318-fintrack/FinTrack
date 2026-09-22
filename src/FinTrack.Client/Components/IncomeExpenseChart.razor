@@ -1,0 +1,28 @@
+@namespace FinTrack.Client.Components
+@inject IJSRuntime JS
+
+<div class="chart-container-bar">
+    <canvas id="@CanvasId"></canvas>
+</div>
+
+@code {
+    [Parameter] public string CanvasId { get; set; } = "incomeExpenseBarCanvas";
+    [Parameter] public string[] Periods { get; set; } = Array.Empty<string>();
+    [Parameter] public decimal[] IncomeData { get; set; } = Array.Empty<decimal>();
+    [Parameter] public decimal[] ExpenseData { get; set; } = Array.Empty<decimal>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Periods != null && Periods.Length > 0)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("finTrackCharts.renderIncomeExpenseChart", CanvasId, Periods, IncomeData, ExpenseData);
+            }
+            catch (Exception)
+            {
+                // Silently handle if canvas not yet ready
+            }
+        }
+    }
+}

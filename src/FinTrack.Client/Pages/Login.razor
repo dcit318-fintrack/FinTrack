@@ -1,0 +1,87 @@
+@page "/login"
+@namespace FinTrack.Client.Pages
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<div class="auth-page-container">
+    <div class="auth-header-logo">
+        <div class="category-icon-circle mint" style="width: 54px; height: 54px; margin: 0 auto 12px auto;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2">
+                <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+        </div>
+        <h1 class="page-main-title" style="text-align: center; margin-bottom: 4px;">Welcome Back</h1>
+        <p class="page-subtitle" style="text-align: center; margin-bottom: 24px;">Sign in to your FinTrack account</p>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="auth-error-alert">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <div class="fintrack-card">
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control-input" @bind-value="loginModel.Email" placeholder="e.g. samuel@ug.edu.gh" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control-input" @bind-value="loginModel.Password" placeholder="••••••••" required />
+            </div>
+
+            <button type="submit" class="btn-primary-action" disabled="@isLoading" style="margin-top: 18px;">
+                @(isLoading ? "Signing in..." : "Sign In")
+            </button>
+        </EditForm>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-muted);">
+        Don't have an account? 
+        <NavLink href="register" class="card-action-link" style="color: var(--primary-green-dark); font-weight: 700;">Create one</NavLink>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginModel = new() { Email = "samuel@ug.edu.gh", Password = "Password123!" };
+    private string errorMessage = string.Empty;
+    private bool isLoading;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var auth = await AuthService.LoginAsync(loginModel);
+            if (auth != null)
+            {
+                Nav.NavigateTo("");
+            }
+            else
+            {
+                errorMessage = "Invalid email or password";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,41 @@
+@namespace FinTrack.Client.Components
+@inject NavigationManager Nav
+
+<nav class="bottom-nav-bar" aria-label="Bottom Navigation">
+    <NavLink class="nav-tab-item" href="" Match="NavLinkMatch.All">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>Dashboard</span>
+    </NavLink>
+
+    <NavLink class="nav-tab-item" href="transactions">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>Transactions</span>
+    </NavLink>
+
+    <NavLink class="nav-tab-item" href="budgets">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h1l1-2.5-1.5-1.5H20c0-1.5-1.5-2.5-1-3z"></path>
+            <circle cx="16" cy="11" r="1"></circle>
+        </svg>
+        <span>Budget</span>
+    </NavLink>
+
+    <NavLink class="nav-tab-item" href="reports">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        <span>Reports</span>
+    </NavLink>
+</nav>

@@ -8,10 +8,12 @@ namespace FinTrack.Server.Services.Budgets;
 public class BudgetService : IBudgetService
 {
     private readonly FinTrackDbContext _dbContext;
+    private readonly ILogger<BudgetService> _logger;
 
-    public BudgetService(FinTrackDbContext dbContext)
+    public BudgetService(FinTrackDbContext dbContext, ILogger<BudgetService> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<List<BudgetDto>> GetBudgetsAsync(Guid userId, string month)
@@ -88,6 +90,7 @@ public class BudgetService : IBudgetService
 
         if (existingBudget)
         {
+            _logger.LogWarning("Duplicate budget creation attempt: user {UserId}, category {CategoryId}, month {Month}", userId, categoryIdVal, request.Month);
             return (false, null, "A budget for this category and month already exists.", null, true);
         }
 
@@ -103,6 +106,8 @@ public class BudgetService : IBudgetService
 
         _dbContext.Budgets.Add(budget);
         await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Budget created: {Id} for user {UserId}", budget.Id, userId);
 
         var dto = new BudgetDto
         {
@@ -136,6 +141,7 @@ public class BudgetService : IBudgetService
         await _dbContext.SaveChangesAsync();
 
         var spent = await GetSpentAmountAsync(userId, budget.CategoryId, budget.Month);
+        _logger.LogInformation("Budget updated: {Id} for user {UserId}", id, userId);
 
         var dto = new BudgetDto
         {
@@ -163,6 +169,9 @@ public class BudgetService : IBudgetService
 
         _dbContext.Budgets.Remove(budget);
         await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Budget deleted: {Id} for user {UserId}", id, userId);
+
         return true;
     }
 

@@ -3,6 +3,7 @@ using FinTrack.Server.Models;
 using FinTrack.Server.Services.Budgets;
 using FinTrack.Server.Services.Dashboard;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace FinTrack.Tests;
@@ -24,8 +25,8 @@ public class DashboardServiceTests
     public async Task GetDashboardSummaryAsync_ShouldCalculateTotalsAndRecentTransactions()
     {
         using var context = GetInMemoryDbContext();
-        var budgetService = new BudgetService(context);
-        var service = new DashboardService(context, budgetService);
+        var budgetService = new BudgetService(context, NullLogger<BudgetService>.Instance);
+        var service = new DashboardService(context, budgetService, NullLogger<DashboardService>.Instance);
 
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();

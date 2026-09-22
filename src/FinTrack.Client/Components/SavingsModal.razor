@@ -1,0 +1,159 @@
+@namespace FinTrack.Client.Components
+@inject IFinTrackApiService ApiService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="Close">
+        <div class="modal-sheet" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    @(IsContribute ? $"Contribute to {GoalToEdit?.Name}" : (IsEdit ? "Edit Savings Goal" : "New Savings Goal"))
+                </h3>
+                <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
+            </div>
+
+            @if (IsContribute && GoalToEdit != null)
+            {
+                <EditForm Model="@contributeModel" OnValidSubmit="HandleContributeSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group">
+                        <label class="form-label">Contribution Amount (GH₵)</label>
+                        <input type="number" step="1" min="1" class="form-control-input" @bind-value="contributeModel.Amount" placeholder="100" required />
+                    </div>
+
+                    <button type="submit" class="btn-primary-action">
+                        Add Contribution
+                    </button>
+                </EditForm>
+            }
+            else
+            {
+                <EditForm Model="@model" OnValidSubmit="HandleGoalSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group">
+                        <label class="form-label">Goal Name</label>
+                        <input type="text" class="form-control-input" @bind-value="model.Name" placeholder="e.g. New Laptop, Emergency Fund" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Target Amount (GH₵)</label>
+                        <input type="number" step="1" min="1" class="form-control-input" @bind-value="model.TargetAmount" placeholder="2000" required />
+                    </div>
+
+                    @if (IsEdit)
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Current Saved Amount (GH₵)</label>
+                            <input type="number" step="1" min="0" class="form-control-input" @bind-value="currentAmount" placeholder="500" />
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label class="form-label">Target Date</label>
+                        <input type="date" class="form-control-input" @bind-value="model.TargetDate" required />
+                    </div>
+
+                    <button type="submit" class="btn-primary-action">
+                        @(IsEdit ? "Save Changes" : "Create Savings Goal")
+                    </button>
+
+                    @if (IsEdit)
+                    {
+                        <button type="button" class="btn-danger-action" @onclick="HandleDelete">
+                            Delete Goal
+                        </button>
+                    }
+                </EditForm>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public SavingsGoalDto? GoalToEdit { get; set; }
+    [Parameter] public bool IsContribute { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private bool IsEdit => GoalToEdit != null && !IsContribute;
+    private CreateSavingsGoalRequest model = new() { TargetDate = DateTime.Today.AddMonths(6) };
+    private ContributeRequest contributeModel = new() { Amount = 100 };
+    private decimal currentAmount;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            if (GoalToEdit != null)
+            {
+                model = new CreateSavingsGoalRequest
+                {
+                    Name = GoalToEdit.Name,
+                    TargetAmount = GoalToEdit.TargetAmount,
+                    TargetDate = GoalToEdit.TargetDate
+                };
+                currentAmount = GoalToEdit.CurrentAmount;
+                contributeModel = new ContributeRequest { Amount = 100 };
+            }
+            else
+            {
+                model = new CreateSavingsGoalRequest
+                {
+                    Name = string.Empty,
+                    TargetAmount = 1000,
+                    TargetDate = DateTime.Today.AddMonths(6)
+                };
+            }
+        }
+    }
+
+    private async Task HandleGoalSubmit()
+    {
+        if (IsEdit && GoalToEdit != null)
+        {
+            await ApiService.UpdateSavingsGoalAsync(GoalToEdit.Id, new UpdateSavingsGoalRequest
+            {
+                Name = model.Name,
+                TargetAmount = model.TargetAmount,
+                CurrentAmount = currentAmount,
+                TargetDate = model.TargetDate
+            });
+        }
+        else
+        {
+            await ApiService.CreateSavingsGoalAsync(model);
+        }
+
+        await OnSaved.InvokeAsync();
+        await Close();
+    }
+
+    private async Task HandleContributeSubmit()
+    {
+        if (GoalToEdit != null)
+        {
+            await ApiService.ContributeToSavingsGoalAsync(GoalToEdit.Id, contributeModel);
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        if (GoalToEdit != null)
+        {
+            await ApiService.DeleteSavingsGoalAsync(GoalToEdit.Id);
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

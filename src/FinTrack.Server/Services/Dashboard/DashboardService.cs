@@ -10,11 +10,13 @@ public class DashboardService : IDashboardService
 {
     private readonly FinTrackDbContext _dbContext;
     private readonly IBudgetService _budgetService;
+    private readonly ILogger<DashboardService> _logger;
 
-    public DashboardService(FinTrackDbContext dbContext, IBudgetService budgetService)
+    public DashboardService(FinTrackDbContext dbContext, IBudgetService budgetService, ILogger<DashboardService> logger)
     {
         _dbContext = dbContext;
         _budgetService = budgetService;
+        _logger = logger;
     }
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(Guid userId, string? month)
@@ -30,7 +32,6 @@ public class DashboardService : IDashboardService
         }
         var endDate = startDate.AddMonths(1).AddTicks(-1);
 
-        // Database-side aggregation for income & expenses (0 in-memory materialization)
         var totalIncome = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId && t.Type == "Income" && t.Date >= startDate && t.Date <= endDate)
@@ -43,7 +44,6 @@ public class DashboardService : IDashboardService
 
         var balance = totalIncome - totalExpenses;
 
-        // Recent 5 transactions
         var recentTransactions = await _dbContext.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId)
@@ -62,7 +62,6 @@ public class DashboardService : IDashboardService
             })
             .ToListAsync();
 
-        // Budgets at risk (>= 80% used)
         var budgets = await _budgetService.GetBudgetsAsync(userId, month);
         var budgetsAtRisk = budgets
             .Where(b => b.Limit > 0 && (b.Spent / b.Limit) >= 0.8m)
@@ -74,6 +73,8 @@ public class DashboardService : IDashboardService
                 PercentUsed = Math.Round((double)(b.Spent / b.Limit) * 100, 1)
             })
             .ToList();
+
+        _logger.LogInformation("Dashboard summary loaded for user {UserId}, month {Month}: income={Income}, expenses={Expenses}", userId, month, totalIncome, totalExpenses);
 
         return new DashboardSummaryDto
         {

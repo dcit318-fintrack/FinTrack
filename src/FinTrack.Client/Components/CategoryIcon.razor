@@ -1,0 +1,76 @@
+@namespace FinTrack.Client.Components
+
+<div class="category-icon-circle @ColorClass" style="width: @(Size)px; height: @(Size)px;">
+    @if (Category.Contains("grocer") || Category.Contains("food") || Description.Contains("whole foods"))
+    {
+        <svg width="@(IconSize)" height="@(IconSize)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"></path>
+            <path d="M15 2v10"></path>
+            <path d="M15 12v10"></path>
+            <path d="M6 2v20"></path>
+            <path d="M6 2a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3"></path>
+        </svg>
+    }
+    else if (Category.Contains("coffee") || Description.Contains("starbucks") || Category.Contains("entertain"))
+    {
+        <svg width="@(IconSize)" height="@(IconSize)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            <line x1="6" y1="2" x2="6" y2="4"></line>
+            <line x1="10" y1="2" x2="10" y2="4"></line>
+            <line x1="14" y1="2" x2="14" y2="4"></line>
+        </svg>
+    }
+    else if (Category.Contains("salary") || Type == "Income")
+    {
+        <svg width="@(IconSize)" height="@(IconSize)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+            <circle cx="12" cy="12" r="2"></circle>
+        </svg>
+    }
+    else if (Category.Contains("transport") || Category.Contains("car") || Description.Contains("uber"))
+    {
+        <svg width="@(IconSize)" height="@(IconSize)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+            <circle cx="7" cy="17" r="2"></circle>
+            <circle cx="17" cy="17" r="2"></circle>
+        </svg>
+    }
+    else if (Category.Contains("rent") || Category.Contains("house"))
+    {
+        <svg width="@(IconSize)" height="@(IconSize)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        </svg>
+    }
+    else
+    {
+        <svg width="@(IconSize)" height="@(IconSize)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+    }
+</div>
+
+@code {
+    [Parameter] public string CategoryName { get; set; } = string.Empty;
+    [Parameter] public string DescriptionText { get; set; } = string.Empty;
+    [Parameter] public string Type { get; set; } = "Expense";
+    [Parameter] public int Size { get; set; } = 44;
+    [Parameter] public int IconSize { get; set; } = 18;
+
+    private string Category => (CategoryName ?? string.Empty).ToLowerInvariant();
+    private string Description => (DescriptionText ?? string.Empty).ToLowerInvariant();
+
+    private string ColorClass
+    {
+        get
+        {
+            if (Category.Contains("food") || Category.Contains("grocer") || Description.Contains("whole foods")) return "mint";
+            if (Category.Contains("coffee") || Description.Contains("starbucks")) return "slate";
+            if (Category.Contains("salary") || Type == "Income") return "mint";
+            if (Category.Contains("transport") || Description.Contains("uber")) return "orange";
+            if (Category.Contains("rent")) return "slate";
+            if (Category.Contains("entertain")) return "teal";
+            return "blue";
+        }
+    }
+}
