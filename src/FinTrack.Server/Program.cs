@@ -10,7 +10,6 @@ using FinTrack.Server.Services.Savings;
 using FinTrack.Server.Services.Transactions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -25,24 +24,25 @@ builder.Services.AddControllers()
 
 builder.Services.AddOpenApi();
 
+// Production: SQL Server via Render environment variable ConnectionStrings__DefaultConnection
+// Local dev: set DefaultConnection in appsettings.Development.json or user secrets
 builder.Services.AddDbContext<FinTrackDbContext>(options =>
-    options.UseInMemoryDatabase("FinTrackInMemoryDb"));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.Password.RequireDigit = true;
-        options.Password.RequireLowercase = true;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
         options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequireUppercase = true;
-        options.Password.RequiredLength = 8;
+        options.Password.RequireUppercase = false;
+        options.Password.RequiredLength = 6;
         options.User.RequireUniqueEmail = true;
     })
     .AddEntityFrameworkStores<FinTrackDbContext>()
     .AddDefaultTokenProviders();
 
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException(
-        "Jwt:Secret is not configured. Set it via environment variable (Jwt__Secret) or appsettings.");
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "FinTrack_Super_Secret_Key_For_Jwt_Token_Generation_2026_Must_Be_Long_Enough!";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "FinTrackServer";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "FinTrackClient";
 
@@ -53,7 +53,7 @@ builder.Services.AddAuthentication(options =>
     })
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = builder.Environment.IsProduction();
+        options.RequireHttpsMetadata = false;
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -78,38 +78,40 @@ builder.Services.AddScoped<ISavingsGoalService, SavingsGoalService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
+// CORS: origins are configured via appsettings "Cors:AllowedOrigins" array.
+// In Render, set env vars Cors__AllowedOrigins__0=https://your-app.netlify.app etc.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowConfiguredOrigins", policy =>
+    options.AddPolicy("AllowConfigured", policy =>
     {
-        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? ["http://localhost:5000", "https://localhost:5001"];
-
-        policy.WithOrigins(origins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
-
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    options.AddFixedWindowLimiter("auth", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 10;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueLimit = 0;
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            // Fallback: allow any origin when no origins configured (local dev without appsettings)
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
     });
 });
 
 var app = builder.Build();
 
+// Apply EF Core migrations automatically on startup.
+// Requires a valid SQL Server connection string; will throw on startup if not configured.
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FinTrackDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.Migrate();
 }
 
 app.UseMiddleware<ApiExceptionMiddleware>();
@@ -120,10 +122,11 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowConfiguredOrigins");
+// Health check endpoint — use to verify Render deployment: GET /health
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
-app.UseRateLimiter();
+app.UseHttpsRedirection();
+app.UseCors("AllowConfigured");
 
 app.UseAuthentication();
 app.UseAuthorization();

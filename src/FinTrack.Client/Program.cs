@@ -14,7 +14,17 @@ culture.NumberFormat.CurrencyPositivePattern = 0;
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+// Reads ApiBaseUrl from wwwroot/appsettings.json.
+// In production (Netlify), set this to the Render backend URL.
+// Falls back to the host's BaseAddress for local development.
+builder.Services.AddScoped(sp =>
+{
+    var http = new HttpClient();
+    var apiUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+    http.BaseAddress = new Uri(apiUrl);
+    return http;
+});
+
 builder.Services.AddScoped<IFinTrackApiService, FinTrackApiService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 

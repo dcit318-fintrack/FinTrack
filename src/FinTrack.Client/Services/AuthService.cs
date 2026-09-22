@@ -11,9 +11,9 @@ public class AuthService : IAuthService
     private readonly IJSRuntime _js;
     public event Action? OnAuthStateChanged;
 
-    private string? _token = "demo-active-token";
-    private string _currentUserName = "Samuel Watson";
-    private string _currentUserEmail = "samuel@ug.edu.gh";
+    private string? _token;
+    private string _currentUserName = string.Empty;
+    private string _currentUserEmail = string.Empty;
 
     public AuthService(HttpClient http, IJSRuntime js)
     {
@@ -23,93 +23,50 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        try
+        var response = await _http.PostAsJsonAsync("/api/auth/login", request);
+
+        if (!response.IsSuccessStatusCode)
         {
-            var response = await _http.PostAsJsonAsync("/api/auth/login", request);
-            if (response.IsSuccessStatusCode)
-            {
-                var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (auth != null)
-                {
-                    _token = auth.AccessToken;
-                    _currentUserName = auth.FullName;
-                    _currentUserEmail = auth.Email;
-                    await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-                    OnAuthStateChanged?.Invoke();
-                    return auth;
-                }
-            }
-        }
-        catch (Exception)
-        {
-            // Fallback for demo when backend is offline
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Login failed ({(int)response.StatusCode}): {errorBody}");
         }
 
-        // Demo / Mock success response
-        var demoAuth = new AuthResponse
-        {
-            UserId = Guid.NewGuid(),
-            Email = request.Email,
-            FullName = request.Email.Split('@')[0],
-            AccessToken = "mock-jwt-token-" + Guid.NewGuid().ToString("N"),
-            RefreshToken = "mock-refresh-token",
-            ExpiresAt = DateTime.UtcNow.AddHours(2)
-        };
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>()
+            ?? throw new InvalidOperationException("Received an empty response from the login endpoint.");
 
-        _token = demoAuth.AccessToken;
-        _currentUserName = demoAuth.FullName;
-        _currentUserEmail = demoAuth.Email;
+        _token = auth.AccessToken;
+        _currentUserName = auth.FullName;
+        _currentUserEmail = auth.Email;
         await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
         OnAuthStateChanged?.Invoke();
-        return demoAuth;
+        return auth;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        try
+        var response = await _http.PostAsJsonAsync("/api/auth/register", request);
+
+        if (!response.IsSuccessStatusCode)
         {
-            var response = await _http.PostAsJsonAsync("/api/auth/register", request);
-            if (response.IsSuccessStatusCode)
-            {
-                var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (auth != null)
-                {
-                    _token = auth.AccessToken;
-                    _currentUserName = auth.FullName;
-                    _currentUserEmail = auth.Email;
-                    await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-                    OnAuthStateChanged?.Invoke();
-                    return auth;
-                }
-            }
-        }
-        catch (Exception)
-        {
-            // Fallback for demo when backend is offline
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Registration failed ({(int)response.StatusCode}): {errorBody}");
         }
 
-        var demoAuth = new AuthResponse
-        {
-            UserId = Guid.NewGuid(),
-            Email = request.Email,
-            FullName = request.FullName,
-            AccessToken = "mock-jwt-token-" + Guid.NewGuid().ToString("N"),
-            RefreshToken = "mock-refresh-token",
-            ExpiresAt = DateTime.UtcNow.AddHours(2)
-        };
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>()
+            ?? throw new InvalidOperationException("Received an empty response from the register endpoint.");
 
-        _token = demoAuth.AccessToken;
-        _currentUserName = demoAuth.FullName;
-        _currentUserEmail = demoAuth.Email;
+        _token = auth.AccessToken;
+        _currentUserName = auth.FullName;
+        _currentUserEmail = auth.Email;
         await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
         OnAuthStateChanged?.Invoke();
-        return demoAuth;
+        return auth;
     }
 
     public async Task LogoutAsync()
     {
         _token = null;
-        _currentUserName = "Guest";
+        _currentUserName = string.Empty;
         _currentUserEmail = string.Empty;
         await _js.InvokeVoidAsync("localStorage.removeItem", "authToken");
         OnAuthStateChanged?.Invoke();
