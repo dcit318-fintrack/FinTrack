@@ -1,6 +1,7 @@
 @page "/reports"
 @namespace FinTrack.Client.Pages
 @inject IFinTrackApiService ApiService
+@inject IAuthService AuthService
 @inject NavigationManager Nav
 
 <div class="reports-page">
@@ -112,6 +113,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+
         await LoadReportData();
     }
 

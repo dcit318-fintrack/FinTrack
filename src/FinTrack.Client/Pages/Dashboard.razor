@@ -2,6 +2,7 @@
 @page "/dashboard"
 @namespace FinTrack.Client.Pages
 @inject IFinTrackApiService ApiService
+@inject IAuthService AuthService
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -115,16 +116,36 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+
         ApiService.OnDataChanged += HandleDataChanged;
         await LoadDashboardData();
     }
 
     private async Task LoadDashboardData()
     {
-        summary = await ApiService.GetDashboardSummaryAsync();
-        var goals = await ApiService.GetSavingsGoalsAsync();
-        activeGoal = goals.FirstOrDefault();
-        StateHasChanged();
+        try
+        {
+            summary = await ApiService.GetDashboardSummaryAsync();
+            var goals = await ApiService.GetSavingsGoalsAsync();
+            activeGoal = goals.FirstOrDefault();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("login");
+        }
+        catch (Exception)
+        {
+            // Gracefully catch network / rendering errors
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
     private void HandleDataChanged()
