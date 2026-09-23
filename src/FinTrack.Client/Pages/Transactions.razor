@@ -1,6 +1,8 @@
 @page "/transactions"
 @namespace FinTrack.Client.Pages
 @inject IFinTrackApiService ApiService
+@inject IAuthService AuthService
+@inject NavigationManager Nav
 @implements IDisposable
 
 <div class="transactions-page">
@@ -142,6 +144,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+
         ApiService.OnDataChanged += HandleDataChanged;
         await LoadTransactions();
     }

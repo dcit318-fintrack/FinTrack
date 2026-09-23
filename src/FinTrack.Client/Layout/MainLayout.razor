@@ -1,20 +1,24 @@
 @inherits LayoutComponentBase
 @namespace FinTrack.Client.Layout
 @inject NavigationManager Nav
+@inject IAuthService AuthService
 @implements IDisposable
 
 <div class="app-viewport">
     <div class="app-frame">
-        @if (!IsAuthPage)
+        @if (!IsAuthPage && isAuthenticated)
         {
             <AppHeader />
         }
         
         <main class="app-main-content @(IsAuthPage ? "auth-main-content" : "")">
-            @Body
+            @if (IsAuthPage || isAuthenticated)
+            {
+                @Body
+            }
         </main>
 
-        @if (!IsAuthPage)
+        @if (!IsAuthPage && isAuthenticated)
         {
             <BottomNav />
         }
@@ -22,6 +26,8 @@
 </div>
 
 @code {
+    private bool isAuthenticated;
+
     private bool IsAuthPage
     {
         get
@@ -34,15 +40,44 @@
     protected override void OnInitialized()
     {
         Nav.LocationChanged += HandleLocationChanged;
+        AuthService.OnAuthStateChanged += HandleAuthStateChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CheckAuthGuardAsync();
+    }
+
+    private async Task CheckAuthGuardAsync()
+    {
+        isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (!IsAuthPage && !isAuthenticated)
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+        StateHasChanged();
+    }
+
+    private void HandleAuthStateChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await CheckAuthGuardAsync();
+        });
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        StateHasChanged();
+        InvokeAsync(async () =>
+        {
+            await CheckAuthGuardAsync();
+        });
     }
 
     public void Dispose()
     {
         Nav.LocationChanged -= HandleLocationChanged;
+        AuthService.OnAuthStateChanged -= HandleAuthStateChanged;
     }
 }

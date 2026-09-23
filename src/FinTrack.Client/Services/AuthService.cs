@@ -38,6 +38,8 @@ public class AuthService : IAuthService
         _currentUserName = auth.FullName;
         _currentUserEmail = auth.Email;
         await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+        await _js.InvokeVoidAsync("localStorage.setItem", "authUserName", _currentUserName);
+        await _js.InvokeVoidAsync("localStorage.setItem", "authUserEmail", _currentUserEmail);
         OnAuthStateChanged?.Invoke();
         return auth;
     }
@@ -59,6 +61,8 @@ public class AuthService : IAuthService
         _currentUserName = auth.FullName;
         _currentUserEmail = auth.Email;
         await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+        await _js.InvokeVoidAsync("localStorage.setItem", "authUserName", _currentUserName);
+        await _js.InvokeVoidAsync("localStorage.setItem", "authUserEmail", _currentUserEmail);
         OnAuthStateChanged?.Invoke();
         return auth;
     }
@@ -69,21 +73,46 @@ public class AuthService : IAuthService
         _currentUserName = string.Empty;
         _currentUserEmail = string.Empty;
         await _js.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        await _js.InvokeVoidAsync("localStorage.removeItem", "authUserName");
+        await _js.InvokeVoidAsync("localStorage.removeItem", "authUserEmail");
         OnAuthStateChanged?.Invoke();
     }
 
-    public Task<bool> IsAuthenticatedAsync()
+    public async Task<bool> IsAuthenticatedAsync()
     {
-        return Task.FromResult(!string.IsNullOrEmpty(_token));
+        if (!string.IsNullOrEmpty(_token))
+        {
+            return true;
+        }
+
+        try
+        {
+            _token = await _js.InvokeAsync<string?>("localStorage.getItem", "authToken");
+            _currentUserName = await _js.InvokeAsync<string?>("localStorage.getItem", "authUserName") ?? string.Empty;
+            _currentUserEmail = await _js.InvokeAsync<string?>("localStorage.getItem", "authUserEmail") ?? string.Empty;
+            return !string.IsNullOrEmpty(_token);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
-    public Task<string> GetCurrentUserEmailAsync()
+    public async Task<string> GetCurrentUserEmailAsync()
     {
-        return Task.FromResult(_currentUserEmail);
+        if (string.IsNullOrEmpty(_currentUserEmail))
+        {
+            await IsAuthenticatedAsync();
+        }
+        return _currentUserEmail;
     }
 
-    public Task<string> GetCurrentUserNameAsync()
+    public async Task<string> GetCurrentUserNameAsync()
     {
-        return Task.FromResult(_currentUserName);
+        if (string.IsNullOrEmpty(_currentUserName))
+        {
+            await IsAuthenticatedAsync();
+        }
+        return _currentUserName;
     }
 }

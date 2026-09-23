@@ -25,10 +25,18 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 // Production: SQL Server via Render environment variable ConnectionStrings__DefaultConnection
-// Local dev: set DefaultConnection in appsettings.Development.json or user secrets
-builder.Services.AddDbContext<FinTrackDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+// Local dev / Tests: in-memory fallback when connection string is not provided
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    builder.Services.AddDbContext<FinTrackDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<FinTrackDbContext>(options =>
+        options.UseInMemoryDatabase("FinTrackDb"));
+}
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
@@ -42,7 +50,11 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     .AddEntityFrameworkStores<FinTrackDbContext>()
     .AddDefaultTokenProviders();
 
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "FinTrack_Super_Secret_Key_For_Jwt_Token_Generation_2026_Must_Be_Long_Enough!";
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+    jwtSecret = "FinTrack_Super_Secret_Key_For_Jwt_Token_Generation_2026_Must_Be_Long_Enough!";
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "FinTrackServer";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "FinTrackClient";
 
@@ -88,7 +100,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowConfigured", policy =>
     {
-        if (allowedOrigins.Length > 0)
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.Host == "localhost")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else if (allowedOrigins.Length > 0)
         {
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
@@ -96,7 +115,6 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // Fallback: allow any origin when no origins configured (local dev without appsettings)
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
@@ -106,12 +124,18 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Apply EF Core migrations automatically on startup.
-// Requires a valid SQL Server connection string; will throw on startup if not configured.
+// Apply EF Core migrations automatically on startup for relational databases, or ensure created for in-memory
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FinTrackDbContext>();
-    dbContext.Database.Migrate();
+    if (dbContext.Database.IsRelational())
+    {
+        dbContext.Database.Migrate();
+    }
+    else
+    {
+        dbContext.Database.EnsureCreated();
+    }
 }
 
 app.UseMiddleware<ApiExceptionMiddleware>();
