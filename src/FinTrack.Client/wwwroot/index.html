@@ -19,17 +19,105 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="js/fintrack-charts.js"></script>
+
+    <style>
+        #app {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #F8FAFC;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        }
+        .splash-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 24px;
+        }
+        .splash-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 320px;
+            width: 100%;
+        }
+        .splash-logo {
+            width: 68px;
+            height: 68px;
+            border-radius: 20px;
+            background: #D1FAE5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 10px 25px rgba(4, 120, 87, 0.18);
+            animation: splashPulse 2s ease-in-out infinite;
+        }
+        @keyframes splashPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+        .splash-brand-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0F172A;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.5px;
+        }
+        .splash-brand-subtitle {
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748B;
+            margin: 0 0 24px 0;
+        }
+        .splash-progress-bar {
+            width: 140px;
+            height: 4px;
+            background: #E2E8F0;
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+        .splash-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #047857, #10B981);
+            border-radius: 999px;
+            position: absolute;
+            animation: splashProgress 1.4s ease-in-out infinite alternate;
+        }
+        @keyframes splashProgress {
+            0% { left: 0%; width: 20%; }
+            100% { left: 80%; width: 20%; }
+        }
+    </style>
 </head>
 
 <body>
     <div id="app">
-        <div class="app-loader">
-            <div class="spinner"></div>
-            <p>Loading FinTrack...</p>
+        <div class="splash-screen">
+            <div class="splash-content">
+                <div class="splash-logo">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                        <circle cx="12" cy="12" r="2"></circle>
+                        <path d="M6 12h.01M18 12h.01"></path>
+                    </svg>
+                </div>
+                <h1 class="splash-brand-title">FinTrack</h1>
+                <p class="splash-brand-subtitle">Personal Finance Tracker</p>
+                <div class="splash-progress-bar">
+                    <div class="splash-progress-fill"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="blazor-error-ui">
+    <div id="blazor-error-ui" style="display: none;">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
