@@ -14,12 +14,12 @@ culture.NumberFormat.CurrencyPositivePattern = 0;
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
-// Reads ApiBaseUrl from wwwroot/appsettings.json.
-// In production (Netlify), set this to the Render backend URL.
-// Falls back to the host's BaseAddress for local development.
+builder.Services.AddTransient<AuthenticationHandler>();
 builder.Services.AddScoped(sp =>
 {
-    var http = new HttpClient();
+    var authHandler = sp.GetRequiredService<AuthenticationHandler>();
+    authHandler.InnerHandler = new HttpClientHandler();
+    var http = new HttpClient(authHandler);
     var apiUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
     http.BaseAddress = new Uri(apiUrl);
     return http;
