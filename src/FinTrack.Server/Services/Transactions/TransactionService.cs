@@ -116,7 +116,24 @@ public class TransactionService : ITransactionService
             return (false, null, "Validation failed.", errors);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Type) && !request.Type.Equals(category.Type, StringComparison.OrdinalIgnoreCase))
+        var isOtherCategory = category.Name.Equals("Other", StringComparison.OrdinalIgnoreCase);
+
+        var requestedType = request.Type?.Trim();
+        var isValidType = string.Equals(requestedType, "Income", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(requestedType, "Expense", StringComparison.OrdinalIgnoreCase);
+
+        if (isOtherCategory)
+        {
+            if (!string.IsNullOrWhiteSpace(requestedType) && !isValidType)
+            {
+                var errors = new Dictionary<string, string[]>
+                {
+                    { "type", new[] { "Transaction type must be 'Income' or 'Expense'." } }
+                };
+                return (false, null, "Validation failed.", errors);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(requestedType) && !requestedType.Equals(category.Type, StringComparison.OrdinalIgnoreCase))
         {
             var errors = new Dictionary<string, string[]>
             {
@@ -134,13 +151,17 @@ public class TransactionService : ITransactionService
             return (false, null, "Validation failed.", errors);
         }
 
+        var transactionType = isOtherCategory && isValidType
+            ? (requestedType!.Equals("Income", StringComparison.OrdinalIgnoreCase) ? "Income" : "Expense")
+            : category.Type;
+
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             CategoryId = request.CategoryId!.Value,
             Amount = Math.Round(request.Amount, 2),
-            Type = category.Type,
+            Type = transactionType,
             Description = request.Description ?? string.Empty,
             Date = request.Date,
             CreatedAt = DateTime.UtcNow
@@ -191,7 +212,24 @@ public class TransactionService : ITransactionService
             return (false, null, "Validation failed.", errors);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Type) && !request.Type.Equals(category.Type, StringComparison.OrdinalIgnoreCase))
+        var isOtherCategory = category.Name.Equals("Other", StringComparison.OrdinalIgnoreCase);
+
+        var requestedType = request.Type?.Trim();
+        var isValidType = string.Equals(requestedType, "Income", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(requestedType, "Expense", StringComparison.OrdinalIgnoreCase);
+
+        if (isOtherCategory)
+        {
+            if (!string.IsNullOrWhiteSpace(requestedType) && !isValidType)
+            {
+                var errors = new Dictionary<string, string[]>
+                {
+                    { "type", new[] { "Transaction type must be 'Income' or 'Expense'." } }
+                };
+                return (false, null, "Validation failed.", errors);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(requestedType) && !requestedType.Equals(category.Type, StringComparison.OrdinalIgnoreCase))
         {
             var errors = new Dictionary<string, string[]>
             {
@@ -200,8 +238,12 @@ public class TransactionService : ITransactionService
             return (false, null, "Validation failed.", errors);
         }
 
+        var transactionType = isOtherCategory && isValidType
+            ? (requestedType!.Equals("Income", StringComparison.OrdinalIgnoreCase) ? "Income" : "Expense")
+            : category.Type;
+
         transaction.Amount = Math.Round(request.Amount, 2);
-        transaction.Type = category.Type;
+        transaction.Type = transactionType;
         transaction.CategoryId = request.CategoryId!.Value;
         transaction.Description = request.Description ?? string.Empty;
         transaction.Date = request.Date;
