@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FinTrack</title>
+  <script>
+    // Netlify 404 fallback: redirect to index.html preserving the path
+    // so Blazor's router can handle the route.
+    var seg = window.location.pathname;
+    sessionStorage.redirect = seg;
+    window.location.replace('/');
+  </script>
+</head>
+<body>
+  Redirecting…
+</body>
+</html>
