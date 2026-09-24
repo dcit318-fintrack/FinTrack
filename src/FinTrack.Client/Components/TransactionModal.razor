@@ -10,10 +10,17 @@
                 <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
             </div>
 
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" style="margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background-color: #FEE2E2; color: #991B1B; font-size: 13px;">
+                    @errorMessage
+                </div>
+            }
+
             <!-- Type toggle -->
             <div class="type-toggle-group">
                 <button type="button" class="type-toggle-btn @(model.Type == "Expense" ? "active expense" : "")" 
-                        @onclick='() => model.Type = "Expense"'>
+                        @onclick='() => ChangeType("Expense")'>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="7" y1="17" x2="17" y2="7"></line>
                         <polyline points="7 7 17 7 17 17"></polyline>
@@ -21,7 +28,7 @@
                     Expense
                 </button>
                 <button type="button" class="type-toggle-btn @(model.Type == "Income" ? "active income" : "")" 
-                        @onclick='() => model.Type = "Income"'>
+                        @onclick='() => ChangeType("Income")'>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="7" y1="7" x2="17" y2="17"></line>
                         <polyline points="17 7 17 17 7 17"></polyline>
@@ -42,7 +49,7 @@
                     <label class="form-label">Category</label>
                     <select class="form-control-select" @bind="model.CategoryId" required>
                         <option value="@Guid.Empty">-- Select Category --</option>
-                        @foreach (var cat in categories)
+                        @foreach (var cat in FilteredCategories)
                         {
                             <option value="@cat.Id">@cat.Name</option>
                         }
@@ -59,13 +66,13 @@
                     <input type="datetime-local" class="form-control-input" @bind-value="model.Date" required />
                 </div>
 
-                <button type="submit" class="btn-primary-action">
-                    @(IsEdit ? "Save Changes" : "Add Transaction")
+                <button type="submit" class="btn-primary-action" disabled="@isSubmitting">
+                    @(isSubmitting ? "Saving..." : (IsEdit ? "Save Changes" : "Add Transaction"))
                 </button>
 
                 @if (IsEdit)
                 {
-                    <button type="button" class="btn-danger-action" @onclick="HandleDelete">
+                    <button type="button" class="btn-danger-action" @onclick="HandleDelete" disabled="@isSubmitting">
                         Delete Transaction
                     </button>
                 }
@@ -83,12 +90,29 @@
     private bool IsEdit => TransactionToEdit != null;
     private CreateTransactionRequest model = new() { Type = "Expense", Date = DateTime.Now };
     private List<CategoryDto> categories = new();
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private IEnumerable<CategoryDto> FilteredCategories =>
+        categories.Where(c => string.Equals(c.Type, model.Type, StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(c.Name, "Other", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(c.Type, "All", StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
-            categories = await ApiService.GetCategoriesAsync();
+            errorMessage = null;
+            isSubmitting = false;
+            try
+            {
+                categories = await ApiService.GetCategoriesAsync();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Failed to load categories: {ex.Message}";
+            }
+
             if (TransactionToEdit != null)
             {
                 model = new CreateTransactionRequest
@@ -106,7 +130,7 @@
                 {
                     Amount = 0,
                     Type = "Expense",
-                    CategoryId = categories.FirstOrDefault()?.Id ?? Guid.Empty,
+                    CategoryId = FilteredCategories.FirstOrDefault()?.Id ?? Guid.Empty,
                     Description = string.Empty,
                     Date = DateTime.Now
                 };
@@ -114,40 +138,76 @@
         }
     }
 
+    private void ChangeType(string newType)
+    {
+        model.Type = newType;
+        if (!FilteredCategories.Any(c => c.Id == model.CategoryId))
+        {
+            model.CategoryId = FilteredCategories.FirstOrDefault()?.Id ?? Guid.Empty;
+        }
+    }
+
     private async Task HandleSubmit()
     {
-        if (model.CategoryId == Guid.Empty && categories.Any())
+        errorMessage = null;
+        isSubmitting = true;
+
+        if (model.CategoryId == Guid.Empty && FilteredCategories.Any())
         {
-            model.CategoryId = categories.First().Id;
+            model.CategoryId = FilteredCategories.First().Id;
         }
 
-        if (IsEdit && TransactionToEdit != null)
+        try
         {
-            await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
+            if (IsEdit && TransactionToEdit != null)
             {
-                Amount = model.Amount,
-                Type = model.Type,
-                CategoryId = model.CategoryId,
-                Description = model.Description,
-                Date = model.Date
-            });
-        }
-        else
-        {
-            await ApiService.CreateTransactionAsync(model);
-        }
+                await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
+                {
+                    Amount = model.Amount,
+                    Type = model.Type,
+                    CategoryId = model.CategoryId,
+                    Description = model.Description,
+                    Date = model.Date
+                });
+            }
+            else
+            {
+                await ApiService.CreateTransactionAsync(model);
+            }
 
-        await OnSaved.InvokeAsync();
-        await Close();
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task HandleDelete()
     {
         if (TransactionToEdit != null)
         {
-            await ApiService.DeleteTransactionAsync(TransactionToEdit.Id);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isSubmitting = true;
+            try
+            {
+                await ApiService.DeleteTransactionAsync(TransactionToEdit.Id);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
         }
     }
 
