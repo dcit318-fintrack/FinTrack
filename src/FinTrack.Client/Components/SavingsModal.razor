@@ -9,8 +9,21 @@
                 <h3 class="modal-title">
                     @(IsContribute ? $"Contribute to {GoalToEdit?.Name}" : (IsEdit ? "Edit Savings Goal" : "New Savings Goal"))
                 </h3>
-                <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
+                <button class="modal-close-btn" @onclick="Close" title="Close" disabled="@isLoading">✕</button>
             </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="modal-alert-error" role="alert">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>@errorMessage</span>
+                    <button type="button" class="modal-alert-close-btn" @onclick="() => errorMessage = null">✕</button>
+                </div>
+            }
 
             @if (IsContribute && GoalToEdit != null)
             {
@@ -19,11 +32,19 @@
 
                     <div class="form-group">
                         <label class="form-label">Contribution Amount (GH₵)</label>
-                        <input type="number" step="1" min="1" class="form-control-input" @bind-value="contributeModel.Amount" placeholder="100" required />
+                        <input type="number" step="1" min="1" class="form-control-input" @bind-value="contributeModel.Amount" placeholder="100" disabled="@isLoading" required />
                     </div>
 
-                    <button type="submit" class="btn-primary-action">
-                        Add Contribution
+                    <button type="submit" class="btn-primary-action" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-inline"></span>
+                            <span>Adding Contribution...</span>
+                        }
+                        else
+                        {
+                            <span>Add Contribution</span>
+                        }
                     </button>
                 </EditForm>
             }
@@ -34,35 +55,43 @@
 
                     <div class="form-group">
                         <label class="form-label">Goal Name</label>
-                        <input type="text" class="form-control-input" @bind-value="model.Name" placeholder="e.g. New Laptop, Emergency Fund" required />
+                        <input type="text" class="form-control-input" @bind-value="model.Name" placeholder="e.g. New Laptop, Emergency Fund" disabled="@isLoading" required />
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Target Amount (GH₵)</label>
-                        <input type="number" step="1" min="1" class="form-control-input" @bind-value="model.TargetAmount" placeholder="2000" required />
+                        <input type="number" step="1" min="1" class="form-control-input" @bind-value="model.TargetAmount" placeholder="2000" disabled="@isLoading" required />
                     </div>
 
                     @if (IsEdit)
                     {
                         <div class="form-group">
                             <label class="form-label">Current Saved Amount (GH₵)</label>
-                            <input type="number" step="1" min="0" class="form-control-input" @bind-value="currentAmount" placeholder="500" />
+                            <input type="number" step="1" min="0" class="form-control-input" @bind-value="currentAmount" placeholder="500" disabled="@isLoading" />
                         </div>
                     }
 
                     <div class="form-group">
                         <label class="form-label">Target Date</label>
-                        <input type="date" class="form-control-input" @bind-value="model.TargetDate" required />
+                        <input type="date" class="form-control-input" @bind-value="model.TargetDate" disabled="@isLoading" required />
                     </div>
 
-                    <button type="submit" class="btn-primary-action">
-                        @(IsEdit ? "Save Changes" : "Create Savings Goal")
+                    <button type="submit" class="btn-primary-action" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-inline"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEdit ? "Save Changes" : "Create Savings Goal")</span>
+                        }
                     </button>
 
                     @if (IsEdit)
                     {
-                        <button type="button" class="btn-danger-action" @onclick="HandleDelete">
-                            Delete Goal
+                        <button type="button" class="btn-danger-action" disabled="@isLoading" @onclick="HandleDelete">
+                            @(isLoading ? "Deleting..." : "Delete Goal")
                         </button>
                     }
                 </EditForm>
@@ -82,11 +111,15 @@
     private CreateSavingsGoalRequest model = new() { TargetDate = DateTime.Today.AddMonths(6) };
     private ContributeRequest contributeModel = new() { Amount = 100 };
     private decimal currentAmount;
+    private string? errorMessage;
+    private bool isLoading;
 
     protected override void OnParametersSet()
     {
         if (IsOpen)
         {
+            errorMessage = null;
+            isLoading = false;
             if (GoalToEdit != null)
             {
                 model = new CreateSavingsGoalRequest
@@ -112,32 +145,58 @@
 
     private async Task HandleGoalSubmit()
     {
-        if (IsEdit && GoalToEdit != null)
+        errorMessage = null;
+        isLoading = true;
+        try
         {
-            await ApiService.UpdateSavingsGoalAsync(GoalToEdit.Id, new UpdateSavingsGoalRequest
+            if (IsEdit && GoalToEdit != null)
             {
-                Name = model.Name,
-                TargetAmount = model.TargetAmount,
-                CurrentAmount = currentAmount,
-                TargetDate = model.TargetDate
-            });
-        }
-        else
-        {
-            await ApiService.CreateSavingsGoalAsync(model);
-        }
+                await ApiService.UpdateSavingsGoalAsync(GoalToEdit.Id, new UpdateSavingsGoalRequest
+                {
+                    Name = model.Name,
+                    TargetAmount = model.TargetAmount,
+                    CurrentAmount = currentAmount,
+                    TargetDate = model.TargetDate
+                });
+            }
+            else
+            {
+                await ApiService.CreateSavingsGoalAsync(model);
+            }
 
-        await OnSaved.InvokeAsync();
-        await Close();
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task HandleContributeSubmit()
     {
         if (GoalToEdit != null)
         {
-            await ApiService.ContributeToSavingsGoalAsync(GoalToEdit.Id, contributeModel);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isLoading = true;
+            try
+            {
+                await ApiService.ContributeToSavingsGoalAsync(GoalToEdit.Id, contributeModel);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isLoading = false;
+            }
         }
     }
 
@@ -145,14 +204,29 @@
     {
         if (GoalToEdit != null)
         {
-            await ApiService.DeleteSavingsGoalAsync(GoalToEdit.Id);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isLoading = true;
+            try
+            {
+                await ApiService.DeleteSavingsGoalAsync(GoalToEdit.Id);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isLoading = false;
+            }
         }
     }
 
     private async Task Close()
     {
+        errorMessage = null;
+        isLoading = false;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
     }

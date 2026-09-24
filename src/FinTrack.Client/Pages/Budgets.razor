@@ -1,13 +1,11 @@
 @page "/budgets"
 @namespace FinTrack.Client.Pages
 @inject IFinTrackApiService ApiService
-@inject IAuthService AuthService
-@inject NavigationManager Nav
 @implements IDisposable
 
 <div class="budgets-page">
     <div class="budgets-page-grid">
-        <div class="budgets-col">
+        <div class="budgets-column">
             <!-- Monthly Budgets Section -->
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                 <h1 class="section-title" style="margin: 0;">Monthly Budgets</h1>
@@ -19,33 +17,45 @@
                 </button>
             </div>
 
-            @foreach (var b in budgets)
+            @if (budgets.Any())
             {
-                var percent = b.Limit > 0 ? Math.Round((double)(b.Spent / b.Limit) * 100.0, 0) : 0;
-                <div class="budget-card" @onclick="() => OpenEditBudget(b)" style="cursor: pointer;">
-                    <div class="budget-header">
-                        <div class="budget-category-info">
-                            <div class="category-icon-circle mint" style="width: 40px; height: 40px;">
-                                @((MarkupString)GetBudgetCategoryIcon(b.CategoryName))
+                @foreach (var b in budgets)
+                {
+                    var percent = b.Limit > 0 ? Math.Round((double)(b.Spent / b.Limit) * 100.0, 0) : 0;
+                    <div class="budget-card" @onclick="() => OpenEditBudget(b)" style="cursor: pointer;">
+                        <div class="budget-header">
+                            <div class="budget-category-info">
+                                <div class="category-icon-circle mint" style="width: 40px; height: 40px;">
+                                    @((MarkupString)GetBudgetCategoryIcon(b.CategoryName))
+                                </div>
+                                <span class="budget-category-name">@b.CategoryName</span>
                             </div>
-                            <span class="budget-category-name">@b.CategoryName</span>
+                            <span class="budget-percent-pill">@percent%</span>
                         </div>
-                        <span class="budget-percent-pill">@percent%</span>
-                    </div>
 
-                    <div class="budget-amount-row">
-                        <span class="budget-amount-spent">@b.Spent.ToString("C0")</span>
-                        <span class="budget-amount-limit">/ @b.Limit.ToString("C0")</span>
-                    </div>
+                        <div class="budget-amount-row">
+                            <span class="budget-amount-spent">@b.Spent.ToString("C0")</span>
+                            <span class="budget-amount-limit">/ @b.Limit.ToString("C0")</span>
+                        </div>
 
-                    <div class="progress-track">
-                        <div class="progress-fill @(percent >= 80 ? "red" : "green")" style="width: @Math.Min(100, percent)%"></div>
+                        <div class="progress-track">
+                            <div class="progress-fill @(percent >= 80 ? "red" : "green")" style="width: @Math.Min(100, percent)%"></div>
+                        </div>
                     </div>
+                }
+            }
+            else
+            {
+                <div class="fintrack-card" style="text-align: center; padding: 32px 16px; margin-bottom: 16px;">
+                    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px;">No monthly budgets set up yet.</p>
+                    <button class="btn-primary-action" style="max-width: 180px; margin: 0 auto; height: 40px; font-size: 14px;" @onclick="OpenAddBudget">
+                        + Create Budget
+                    </button>
                 </div>
             }
         </div>
 
-        <div class="budgets-col">
+        <div class="savings-column">
             <!-- Savings Goals Section -->
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                 <h2 class="section-title" style="margin: 0;">Savings Goals</h2>
@@ -60,30 +70,42 @@
                 </div>
             </div>
 
-            @foreach (var g in savingsGoals)
+            @if (savingsGoals.Any())
             {
-                <div class="savings-card">
-                    <div class="savings-header" @onclick="() => OpenEditGoal(g)" style="cursor: pointer;">
-                        <div class="category-icon-circle @GetSavingsColorClass(g.Name)" style="width: 44px; height: 44px;">
-                            @((MarkupString)GetSavingsIcon(g.Name))
+                @foreach (var g in savingsGoals)
+                {
+                    <div class="savings-card">
+                        <div class="savings-header" @onclick="() => OpenEditGoal(g)" style="cursor: pointer;">
+                            <div class="category-icon-circle @GetSavingsColorClass(g.Name)" style="width: 44px; height: 44px;">
+                                @((MarkupString)GetSavingsIcon(g.Name))
+                            </div>
+                            <div>
+                                <div class="savings-name">@g.Name</div>
+                                <div class="savings-subtext">@g.ProgressPercent.ToString("0.#")% Achieved</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="savings-name">@g.Name</div>
-                            <div class="savings-subtext">@g.ProgressPercent.ToString("0.#")% Achieved</div>
+
+                        <div class="savings-amount-row">
+                            <span class="savings-current">@g.CurrentAmount.ToString("C0")</span>
+                            <span class="savings-target">of @g.TargetAmount.ToString("C0")</span>
                         </div>
-                    </div>
 
-                    <div class="savings-amount-row">
-                        <span class="savings-current">@g.CurrentAmount.ToString("C0")</span>
-                        <span class="savings-target">of @g.TargetAmount.ToString("C0")</span>
-                    </div>
+                        <div class="progress-track">
+                            <div class="progress-fill green" style="width: @Math.Min(100, g.ProgressPercent)%"></div>
+                        </div>
 
-                    <div class="progress-track">
-                        <div class="progress-fill green" style="width: @Math.Min(100, g.ProgressPercent)%"></div>
+                        <button class="btn-contribute-inline" @onclick="() => OpenContributeModal(g)">
+                            + Contribute
+                        </button>
                     </div>
-
-                    <button class="btn-contribute-inline" @onclick="() => OpenContributeModal(g)">
-                        + Contribute
+                }
+            }
+            else
+            {
+                <div class="fintrack-card" style="text-align: center; padding: 32px 16px; margin-bottom: 16px;">
+                    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px;">No savings goals created yet.</p>
+                    <button class="btn-primary-action" style="max-width: 180px; margin: 0 auto; height: 40px; font-size: 14px;" @onclick="OpenAddGoal">
+                        + Create Goal
                     </button>
                 </div>
             }
@@ -107,12 +129,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await AuthService.IsAuthenticatedAsync())
-        {
-            Nav.NavigateTo("login");
-            return;
-        }
-
         ApiService.OnDataChanged += HandleDataChanged;
         await LoadData();
     }

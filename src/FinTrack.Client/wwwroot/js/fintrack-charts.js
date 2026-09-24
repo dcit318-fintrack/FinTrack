@@ -9,6 +9,11 @@ window.finTrackCharts = {
 
         if (this.instances[canvasId]) {
             this.instances[canvasId].destroy();
+            delete this.instances[canvasId];
+        }
+
+        if (!data || data.length === 0 || data.every(v => !v || v === 0)) {
+            return;
         }
 
         const ctx = canvas.getContext('2d');
@@ -30,10 +35,10 @@ window.finTrackCharts = {
                 ctx.textBaseline = 'middle';
                 ctx.fillText('Total Spent', centerX, centerY - 14);
 
-                // Main total: "GH₵4,250"
+                // Main total: "$4,250"
                 ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
                 ctx.fillStyle = '#0F172A';
-                ctx.fillText(totalSpentFormatted || 'GH₵0.00', centerX, centerY + 14);
+                ctx.fillText(totalSpentFormatted || '$0.00', centerX, centerY + 14);
 
                 ctx.restore();
             }
@@ -70,7 +75,7 @@ window.finTrackCharts = {
                         callbacks: {
                             label: function (context) {
                                 const value = context.parsed;
-                                return ` GH₵${value.toLocaleString()}`;
+                                return ` $${value.toLocaleString()}`;
                             }
                         }
                     }
@@ -86,6 +91,11 @@ window.finTrackCharts = {
 
         if (this.instances[canvasId]) {
             this.instances[canvasId].destroy();
+            delete this.instances[canvasId];
+        }
+
+        if (!labels || labels.length === 0 || (!incomeData?.length && !expenseData?.length)) {
+            return;
         }
 
         const ctx = canvas.getContext('2d');
@@ -145,9 +155,9 @@ window.finTrackCharts = {
                             },
                             callback: function(value) {
                                 if (value >= 1000) {
-                                    return 'GH₵' + (value / 1000) + 'k';
+                                    return '$' + (value / 1000) + 'k';
                                 }
-                                return 'GH₵' + value;
+                                return '$' + value;
                             }
                         },
                         border: {

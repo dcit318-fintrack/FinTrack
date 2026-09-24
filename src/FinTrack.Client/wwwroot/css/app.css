@@ -559,7 +559,7 @@ html, body {
 /* Floating Action Button (FAB) */
 .fab-container {
     position: fixed;
-    bottom: 96px;
+    bottom: 84px;
     right: 20px;
     z-index: 50;
 }
@@ -567,7 +567,7 @@ html, body {
 @media (min-width: 768px) {
     .fab-container {
         bottom: 32px;
-        right: max(32px, calc(50% - 530px));
+        right: 32px;
     }
 }
 
@@ -994,38 +994,29 @@ html, body {
     background-color: rgba(15, 23, 42, 0.45);
     backdrop-filter: blur(4px);
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     z-index: 100;
-}
-
-@media (min-width: 640px) {
-    .modal-backdrop {
-        align-items: center;
-    }
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .modal-sheet {
     background-color: #FFFFFF;
     width: 100%;
     max-width: 440px;
-    border-radius: 28px 28px 0 0;
+    border-radius: 24px;
     padding: 24px 20px 32px 20px;
     box-shadow: var(--shadow-elevated);
-    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     max-height: 90vh;
     overflow-y: auto;
+    margin: auto;
 }
 
-@media (min-width: 640px) {
-    .modal-sheet {
-        border-radius: 24px;
-    }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+@keyframes modalPopIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .modal-header {
@@ -1152,6 +1143,108 @@ html, body {
     margin-top: 8px;
 }
 
+.btn-primary-action:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-danger-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Modal Error Banner & Spinner */
+.modal-alert-error {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #FECACA;
+}
+
+.modal-alert-error svg {
+    flex-shrink: 0;
+}
+
+.modal-alert-error span {
+    flex: 1;
+    word-break: break-word;
+}
+
+.modal-alert-close-btn {
+    background: transparent;
+    border: none;
+    color: #DC2626;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    font-weight: 700;
+    border-radius: 4px;
+}
+
+.modal-alert-close-btn:hover {
+    background-color: rgba(220, 38, 38, 0.12);
+}
+
+.spinner-inline {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #FFFFFF;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Reports Empty State */
+.reports-empty-state {
+    text-align: center;
+    padding: 48px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #F1F5F9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+.empty-state-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px 0;
+}
+
+.empty-state-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
 /* Auth Styles */
 .auth-main-content {
     padding: 40px 20px 30px 20px !important;
@@ -1169,7 +1262,7 @@ html, body {
 
 .auth-page-container {
     padding: 10px 4px;
-    max-width: 440px;
+    max-width: 380px;
     width: 100%;
     margin: 0 auto;
 }
@@ -1190,6 +1283,7 @@ html, body {
     gap: 8px;
     margin-bottom: 16px;
 }
+
 /* Profile Menu Styles */
 .profile-backdrop {
     position: fixed;
@@ -1238,118 +1332,28 @@ html, body {
     background-color: #F1F5F9;
 }
 
-/* App Container & Splash Screen Loader */
-#app {
-    min-height: 100vh;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.splash-screen {
+/* App Loader */
+.app-loader {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex: 1;
     min-height: 100vh;
-    width: 100%;
-    background: #F8FAFC;
-    padding: 24px;
+    gap: 16px;
+    color: #475569;
+    font-weight: 600;
 }
 
-.splash-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    max-width: 320px;
-    width: 100%;
+.spinner {
+    width: 44px;
+    height: 44px;
+    border: 4px solid #E2E8F0;
+    border-top: 4px solid #047857;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
 }
 
-.splash-logo {
-    width: 68px;
-    height: 68px;
-    border-radius: 20px;
-    background: #D1FAE5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-    box-shadow: 0 10px 25px rgba(4, 120, 87, 0.18);
-    animation: splashPulse 2s ease-in-out infinite;
-}
-
-@keyframes splashPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.06); }
-}
-
-.splash-brand-title {
-    font-size: 24px;
-    font-weight: 800;
-    color: #0F172A;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-
-.splash-brand-subtitle {
-    font-size: 13px;
-    font-weight: 500;
-    color: #64748B;
-    margin: 0 0 24px 0;
-}
-
-.splash-progress-bar {
-    width: 140px;
-    height: 4px;
-    background: #E2E8F0;
-    border-radius: 999px;
-    overflow: hidden;
-    position: relative;
-}
-
-.splash-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #047857, #10B981);
-    border-radius: 999px;
-    position: absolute;
-    animation: splashProgress 1.4s ease-in-out infinite alternate;
-}
-
-@keyframes splashProgress {
-    0% { left: 0%; width: 20%; }
-    100% { left: 80%; width: 20%; }
-}
-
-/* Blazor Error UI */
-#blazor-error-ui {
-    background: #FEF3C7;
-    border-top: 1px solid #F59E0B;
-    bottom: 0;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    display: none;
-    left: 0;
-    padding: 10px 16px;
-    position: fixed;
-    width: 100%;
-    z-index: 10000;
-    color: #92400E;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-#blazor-error-ui .reload {
-    color: #B45309;
-    font-weight: 700;
-    margin-left: 6px;
-    text-decoration: underline;
-}
-
-#blazor-error-ui .dismiss {
-    cursor: pointer;
-    position: absolute;
-    right: 16px;
-    top: 10px;
-    font-size: 14px;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
