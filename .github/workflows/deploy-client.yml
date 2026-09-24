@@ -27,6 +27,9 @@ jobs:
           dotnet publish src/FinTrack.Client/FinTrack.Client.csproj \
             --configuration Release \
             --output ./publish/client
+          if [ ! -f ./publish/client/wwwroot/_framework/blazor.webassembly.js ]; then
+            cp ./publish/client/wwwroot/_framework/blazor.webassembly.*.js ./publish/client/wwwroot/_framework/blazor.webassembly.js 2>/dev/null || true
+          fi
 
       - name: Deploy to Netlify
         uses: netlify/actions/cli@master
