@@ -12,6 +12,13 @@
                 <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
             </div>
 
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" style="margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background-color: #FEE2E2; color: #991B1B; font-size: 13px;">
+                    @errorMessage
+                </div>
+            }
+
             @if (IsContribute && GoalToEdit != null)
             {
                 <EditForm Model="@contributeModel" OnValidSubmit="HandleContributeSubmit">
@@ -22,8 +29,8 @@
                         <input type="number" step="1" min="1" class="form-control-input" @bind-value="contributeModel.Amount" placeholder="100" required />
                     </div>
 
-                    <button type="submit" class="btn-primary-action">
-                        Add Contribution
+                    <button type="submit" class="btn-primary-action" disabled="@isSubmitting">
+                        @(isSubmitting ? "Contributing..." : "Add Contribution")
                     </button>
                 </EditForm>
             }
@@ -55,13 +62,13 @@
                         <input type="date" class="form-control-input" @bind-value="model.TargetDate" required />
                     </div>
 
-                    <button type="submit" class="btn-primary-action">
-                        @(IsEdit ? "Save Changes" : "Create Savings Goal")
+                    <button type="submit" class="btn-primary-action" disabled="@isSubmitting">
+                        @(isSubmitting ? "Saving..." : (IsEdit ? "Save Changes" : "Create Savings Goal"))
                     </button>
 
                     @if (IsEdit)
                     {
-                        <button type="button" class="btn-danger-action" @onclick="HandleDelete">
+                        <button type="button" class="btn-danger-action" @onclick="HandleDelete" disabled="@isSubmitting">
                             Delete Goal
                         </button>
                     }
@@ -82,11 +89,15 @@
     private CreateSavingsGoalRequest model = new() { TargetDate = DateTime.Today.AddMonths(6) };
     private ContributeRequest contributeModel = new() { Amount = 100 };
     private decimal currentAmount;
+    private string? errorMessage;
+    private bool isSubmitting;
 
     protected override void OnParametersSet()
     {
         if (IsOpen)
         {
+            errorMessage = null;
+            isSubmitting = false;
             if (GoalToEdit != null)
             {
                 model = new CreateSavingsGoalRequest
@@ -112,32 +123,58 @@
 
     private async Task HandleGoalSubmit()
     {
-        if (IsEdit && GoalToEdit != null)
+        errorMessage = null;
+        isSubmitting = true;
+        try
         {
-            await ApiService.UpdateSavingsGoalAsync(GoalToEdit.Id, new UpdateSavingsGoalRequest
+            if (IsEdit && GoalToEdit != null)
             {
-                Name = model.Name,
-                TargetAmount = model.TargetAmount,
-                CurrentAmount = currentAmount,
-                TargetDate = model.TargetDate
-            });
-        }
-        else
-        {
-            await ApiService.CreateSavingsGoalAsync(model);
-        }
+                await ApiService.UpdateSavingsGoalAsync(GoalToEdit.Id, new UpdateSavingsGoalRequest
+                {
+                    Name = model.Name,
+                    TargetAmount = model.TargetAmount,
+                    CurrentAmount = currentAmount,
+                    TargetDate = model.TargetDate
+                });
+            }
+            else
+            {
+                await ApiService.CreateSavingsGoalAsync(model);
+            }
 
-        await OnSaved.InvokeAsync();
-        await Close();
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task HandleContributeSubmit()
     {
         if (GoalToEdit != null)
         {
-            await ApiService.ContributeToSavingsGoalAsync(GoalToEdit.Id, contributeModel);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isSubmitting = true;
+            try
+            {
+                await ApiService.ContributeToSavingsGoalAsync(GoalToEdit.Id, contributeModel);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
         }
     }
 
@@ -145,9 +182,22 @@
     {
         if (GoalToEdit != null)
         {
-            await ApiService.DeleteSavingsGoalAsync(GoalToEdit.Id);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isSubmitting = true;
+            try
+            {
+                await ApiService.DeleteSavingsGoalAsync(GoalToEdit.Id);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
         }
     }
 

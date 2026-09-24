@@ -10,6 +10,13 @@
                 <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
             </div>
 
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" style="margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background-color: #FEE2E2; color: #991B1B; font-size: 13px;">
+                    @errorMessage
+                </div>
+            }
+
             <EditForm Model="@model" OnValidSubmit="HandleSubmit">
                 <DataAnnotationsValidator />
 
@@ -37,13 +44,13 @@
                     <input type="text" class="form-control-input" @bind-value="model.Month" placeholder="e.g. 2026-08" required />
                 </div>
 
-                <button type="submit" class="btn-primary-action">
-                    @(IsEdit ? "Save Budget" : "Create Budget")
+                <button type="submit" class="btn-primary-action" disabled="@isSubmitting">
+                    @(isSubmitting ? "Saving..." : (IsEdit ? "Save Budget" : "Create Budget"))
                 </button>
 
                 @if (IsEdit)
                 {
-                    <button type="button" class="btn-danger-action" @onclick="HandleDelete">
+                    <button type="button" class="btn-danger-action" @onclick="HandleDelete" disabled="@isSubmitting">
                         Delete Budget
                     </button>
                 }
@@ -61,12 +68,24 @@
     private bool IsEdit => BudgetToEdit != null;
     private CreateBudgetRequest model = new() { Month = DateTime.Today.ToString("yyyy-MM") };
     private List<CategoryDto> categories = new();
+    private string? errorMessage;
+    private bool isSubmitting;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
-            categories = await ApiService.GetCategoriesAsync();
+            errorMessage = null;
+            isSubmitting = false;
+            try
+            {
+                categories = await ApiService.GetCategoriesAsync();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Failed to load categories: {ex.Message}";
+            }
+
             if (BudgetToEdit != null)
             {
                 model = new CreateBudgetRequest
@@ -90,29 +109,55 @@
 
     private async Task HandleSubmit()
     {
-        if (IsEdit && BudgetToEdit != null)
+        errorMessage = null;
+        isSubmitting = true;
+        try
         {
-            await ApiService.UpdateBudgetAsync(BudgetToEdit.Id, new UpdateBudgetRequest
+            if (IsEdit && BudgetToEdit != null)
             {
-                Limit = model.Limit
-            });
-        }
-        else
-        {
-            await ApiService.CreateBudgetAsync(model);
-        }
+                await ApiService.UpdateBudgetAsync(BudgetToEdit.Id, new UpdateBudgetRequest
+                {
+                    Limit = model.Limit
+                });
+            }
+            else
+            {
+                await ApiService.CreateBudgetAsync(model);
+            }
 
-        await OnSaved.InvokeAsync();
-        await Close();
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task HandleDelete()
     {
         if (BudgetToEdit != null)
         {
-            await ApiService.DeleteBudgetAsync(BudgetToEdit.Id);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isSubmitting = true;
+            try
+            {
+                await ApiService.DeleteBudgetAsync(BudgetToEdit.Id);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
         }
     }
 
