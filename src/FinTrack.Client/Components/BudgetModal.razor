@@ -7,8 +7,21 @@
         <div class="modal-sheet" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <h3 class="modal-title">@(IsEdit ? "Update Budget" : "New Category Budget")</h3>
-                <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
+                <button class="modal-close-btn" @onclick="Close" title="Close" disabled="@isLoading">✕</button>
             </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="modal-alert-error" role="alert">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>@errorMessage</span>
+                    <button type="button" class="modal-alert-close-btn" @onclick="() => errorMessage = null">✕</button>
+                </div>
+            }
 
             <EditForm Model="@model" OnValidSubmit="HandleSubmit">
                 <DataAnnotationsValidator />
@@ -17,7 +30,7 @@
                 {
                     <div class="form-group">
                         <label class="form-label">Category</label>
-                        <select class="form-control-select" @bind="model.CategoryId" required>
+                        <select class="form-control-select" @bind="model.CategoryId" disabled="@isLoading" required>
                             <option value="@Guid.Empty">-- Select Category --</option>
                             @foreach (var cat in categories.Where(c => c.Type == "Expense"))
                             {
@@ -29,22 +42,38 @@
 
                 <div class="form-group">
                     <label class="form-label">Monthly Limit (GH₵)</label>
-                    <input type="number" step="1" min="1" class="form-control-input" @bind-value="model.Limit" placeholder="500" required />
+                    <input type="number" step="1" min="1" class="form-control-input" @bind-value="model.Limit" placeholder="500" disabled="@isLoading" required />
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Month (YYYY-MM)</label>
-                    <input type="text" class="form-control-input" @bind-value="model.Month" placeholder="e.g. 2026-08" required />
+                    <input type="text" class="form-control-input" @bind-value="model.Month" placeholder="e.g. 2026-08" disabled="@isLoading" required />
                 </div>
 
-                <button type="submit" class="btn-primary-action">
-                    @(IsEdit ? "Save Budget" : "Create Budget")
+                <button type="submit" class="btn-primary-action" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-inline"></span>
+                        <span>@(IsEdit ? "Saving Budget..." : "Creating Budget...")</span>
+                    }
+                    else
+                    {
+                        <span>@(IsEdit ? "Save Budget" : "Create Budget")</span>
+                    }
                 </button>
 
                 @if (IsEdit)
                 {
-                    <button type="button" class="btn-danger-action" @onclick="HandleDelete">
-                        Delete Budget
+                    <button type="button" class="btn-danger-action" @onclick="HandleDelete" disabled="@isLoading">
+                        @if (isDeleting)
+                        {
+                            <span class="spinner-inline"></span>
+                            <span>Deleting...</span>
+                        }
+                        else
+                        {
+                            <span>Delete Budget</span>
+                        }
                     </button>
                 }
             </EditForm>
@@ -61,12 +90,24 @@
     private bool IsEdit => BudgetToEdit != null;
     private CreateBudgetRequest model = new() { Month = DateTime.Today.ToString("yyyy-MM") };
     private List<CategoryDto> categories = new();
+    private bool isLoading;
+    private bool isDeleting;
+    private string? errorMessage;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
-            categories = await ApiService.GetCategoriesAsync();
+            errorMessage = null;
+            try
+            {
+                categories = await ApiService.GetCategoriesAsync();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Failed to load categories: {ex.Message}";
+            }
+
             if (BudgetToEdit != null)
             {
                 model = new CreateBudgetRequest
@@ -90,34 +131,70 @@
 
     private async Task HandleSubmit()
     {
-        if (IsEdit && BudgetToEdit != null)
+        errorMessage = null;
+        isLoading = true;
+        try
         {
-            await ApiService.UpdateBudgetAsync(BudgetToEdit.Id, new UpdateBudgetRequest
+            if (IsEdit && BudgetToEdit != null)
             {
-                Limit = model.Limit
-            });
-        }
-        else
-        {
-            await ApiService.CreateBudgetAsync(model);
-        }
+                await ApiService.UpdateBudgetAsync(BudgetToEdit.Id, new UpdateBudgetRequest
+                {
+                    Limit = model.Limit
+                });
+            }
+            else
+            {
+                if (model.CategoryId == Guid.Empty)
+                {
+                    errorMessage = "Please select a category.";
+                    isLoading = false;
+                    return;
+                }
+                await ApiService.CreateBudgetAsync(model);
+            }
 
-        await OnSaved.InvokeAsync();
-        await Close();
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task HandleDelete()
     {
         if (BudgetToEdit != null)
         {
-            await ApiService.DeleteBudgetAsync(BudgetToEdit.Id);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isLoading = true;
+            isDeleting = true;
+            try
+            {
+                await ApiService.DeleteBudgetAsync(BudgetToEdit.Id);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isLoading = false;
+                isDeleting = false;
+            }
         }
     }
 
     private async Task Close()
     {
+        if (isLoading) return;
+        errorMessage = null;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
     }

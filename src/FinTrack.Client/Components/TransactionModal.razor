@@ -7,13 +7,27 @@
         <div class="modal-sheet" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <h3 class="modal-title">@(IsEdit ? "Edit Transaction" : "New Transaction")</h3>
-                <button class="modal-close-btn" @onclick="Close" title="Close">✕</button>
+                <button class="modal-close-btn" @onclick="Close" title="Close" disabled="@isLoading">✕</button>
             </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="modal-alert-error" role="alert">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>@errorMessage</span>
+                    <button type="button" class="modal-alert-close-btn" @onclick="() => errorMessage = null">✕</button>
+                </div>
+            }
 
             <!-- Type toggle -->
             <div class="type-toggle-group">
                 <button type="button" class="type-toggle-btn @(model.Type == "Expense" ? "active expense" : "")" 
-                        @onclick='() => model.Type = "Expense"'>
+                        disabled="@isLoading"
+                        @onclick='() => SetType("Expense")'>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="7" y1="17" x2="17" y2="7"></line>
                         <polyline points="7 7 17 7 17 17"></polyline>
@@ -21,7 +35,8 @@
                     Expense
                 </button>
                 <button type="button" class="type-toggle-btn @(model.Type == "Income" ? "active income" : "")" 
-                        @onclick='() => model.Type = "Income"'>
+                        disabled="@isLoading"
+                        @onclick='() => SetType("Income")'>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="7" y1="7" x2="17" y2="17"></line>
                         <polyline points="17 7 17 17 7 17"></polyline>
@@ -35,14 +50,14 @@
 
                 <div class="form-group">
                     <label class="form-label">Amount (GH₵)</label>
-                    <input type="number" step="0.01" min="0.01" class="form-control-input" @bind-value="model.Amount" placeholder="0.00" required />
+                    <input type="number" step="0.01" min="0.01" class="form-control-input" @bind-value="model.Amount" placeholder="0.00" disabled="@isLoading" required />
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Category</label>
-                    <select class="form-control-select" @bind="model.CategoryId" required>
+                    <select class="form-control-select" @bind="model.CategoryId" disabled="@isLoading" required>
                         <option value="@Guid.Empty">-- Select Category --</option>
-                        @foreach (var cat in categories)
+                        @foreach (var cat in categories.Where(c => c.Type == model.Type))
                         {
                             <option value="@cat.Id">@cat.Name</option>
                         }
@@ -51,22 +66,30 @@
 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <input type="text" class="form-control-input" @bind-value="model.Description" placeholder="e.g. Whole Foods, Starbucks, Salary" required />
+                    <input type="text" class="form-control-input" @bind-value="model.Description" placeholder="e.g. Whole Foods, Starbucks, Salary" disabled="@isLoading" required />
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Date</label>
-                    <input type="datetime-local" class="form-control-input" @bind-value="model.Date" required />
+                    <input type="datetime-local" class="form-control-input" @bind-value="model.Date" @bind-value:format="yyyy-MM-ddTHH:mm" disabled="@isLoading" required />
                 </div>
 
-                <button type="submit" class="btn-primary-action">
-                    @(IsEdit ? "Save Changes" : "Add Transaction")
+                <button type="submit" class="btn-primary-action" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-inline"></span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>@(IsEdit ? "Save Changes" : "Add Transaction")</span>
+                    }
                 </button>
 
                 @if (IsEdit)
                 {
-                    <button type="button" class="btn-danger-action" @onclick="HandleDelete">
-                        Delete Transaction
+                    <button type="button" class="btn-danger-action" disabled="@isLoading" @onclick="HandleDelete">
+                        @(isLoading ? "Deleting..." : "Delete Transaction")
                     </button>
                 }
             </EditForm>
@@ -83,12 +106,17 @@
     private bool IsEdit => TransactionToEdit != null;
     private CreateTransactionRequest model = new() { Type = "Expense", Date = DateTime.Now };
     private List<CategoryDto> categories = new();
+    private string? errorMessage;
+    private bool isLoading;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
+            errorMessage = null;
+            isLoading = false;
             categories = await ApiService.GetCategoriesAsync();
+
             if (TransactionToEdit != null)
             {
                 model = new CreateTransactionRequest
@@ -102,11 +130,13 @@
             }
             else
             {
+                var initialType = "Expense";
+                var defaultCat = categories.FirstOrDefault(c => c.Type == initialType)?.Id ?? Guid.Empty;
                 model = new CreateTransactionRequest
                 {
                     Amount = 0,
-                    Type = "Expense",
-                    CategoryId = categories.FirstOrDefault()?.Id ?? Guid.Empty,
+                    Type = initialType,
+                    CategoryId = defaultCat,
                     Description = string.Empty,
                     Date = DateTime.Now
                 };
@@ -114,45 +144,87 @@
         }
     }
 
+    private void SetType(string newType)
+    {
+        if (model.Type == newType) return;
+        model.Type = newType;
+        errorMessage = null;
+
+        var matchingCats = categories.Where(c => c.Type == newType).ToList();
+        if (!matchingCats.Any(c => c.Id == model.CategoryId))
+        {
+            model.CategoryId = matchingCats.FirstOrDefault()?.Id ?? Guid.Empty;
+        }
+    }
+
     private async Task HandleSubmit()
     {
-        if (model.CategoryId == Guid.Empty && categories.Any())
+        errorMessage = null;
+        var matchingCats = categories.Where(c => c.Type == model.Type).ToList();
+        if (model.CategoryId == Guid.Empty && matchingCats.Any())
         {
-            model.CategoryId = categories.First().Id;
+            model.CategoryId = matchingCats.First().Id;
         }
 
-        if (IsEdit && TransactionToEdit != null)
+        isLoading = true;
+        try
         {
-            await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
+            if (IsEdit && TransactionToEdit != null)
             {
-                Amount = model.Amount,
-                Type = model.Type,
-                CategoryId = model.CategoryId,
-                Description = model.Description,
-                Date = model.Date
-            });
-        }
-        else
-        {
-            await ApiService.CreateTransactionAsync(model);
-        }
+                await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
+                {
+                    Amount = model.Amount,
+                    Type = model.Type,
+                    CategoryId = model.CategoryId,
+                    Description = model.Description,
+                    Date = model.Date
+                });
+            }
+            else
+            {
+                await ApiService.CreateTransactionAsync(model);
+            }
 
-        await OnSaved.InvokeAsync();
-        await Close();
+            await OnSaved.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task HandleDelete()
     {
         if (TransactionToEdit != null)
         {
-            await ApiService.DeleteTransactionAsync(TransactionToEdit.Id);
-            await OnSaved.InvokeAsync();
-            await Close();
+            errorMessage = null;
+            isLoading = true;
+            try
+            {
+                await ApiService.DeleteTransactionAsync(TransactionToEdit.Id);
+                await OnSaved.InvokeAsync();
+                await Close();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isLoading = false;
+            }
         }
     }
 
     private async Task Close()
     {
+        errorMessage = null;
+        isLoading = false;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
     }
