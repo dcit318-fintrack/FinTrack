@@ -1,0 +1,38 @@
+# =============================================================================
+# .dockerignore
+# Keeps the build context small and prevents secrets from reaching the image.
+# =============================================================================
+
+# --- Version control ---
+.git
+.github
+
+# --- IDE / OS artefacts ---
+.DS_Store
+*.suo
+*.user
+*.rsuser
+.vs/
+.vscode/
+.idea/
+
+# --- Local build outputs ---
+**/bin/
+**/obj/
+
+# --- Blazor WASM client ---
+src/FinTrack.Client/
+
+# --- Tests ---
+tests/
+
+# --- Documentation & scripts ---
+docs/
+README.md
+create-issues.ps1
+
+# --- Local secrets and development overrides ---
+**/*.env
+**/appsettings.Development.json
+**/secrets.json
+**/user-secrets.json
