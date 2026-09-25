@@ -73,7 +73,7 @@
 
                     <div class="form-group">
                         <label class="form-label">Target Date</label>
-                        <input type="date" class="form-control-input" @bind-value="model.TargetDate" disabled="@isLoading" required />
+                        <InputDate class="form-control-input" @bind-Value="model.TargetDate" disabled="@isLoading" required />
                     </div>
 
                     <button type="submit" class="btn-primary-action" disabled="@isLoading">
@@ -113,34 +113,53 @@
     private decimal currentAmount;
     private string? errorMessage;
     private bool isLoading;
+    private bool wasOpen;
+    private Guid? previousGoalId;
+    private bool previousIsContribute;
 
     protected override void OnParametersSet()
     {
         if (IsOpen)
         {
-            errorMessage = null;
-            isLoading = false;
-            if (GoalToEdit != null)
+            bool isNewOpen = !wasOpen;
+            bool isDifferentGoal = GoalToEdit?.Id != previousGoalId;
+            bool isDifferentMode = IsContribute != previousIsContribute;
+
+            if (isNewOpen || isDifferentGoal || isDifferentMode)
             {
-                model = new CreateSavingsGoalRequest
+                errorMessage = null;
+                isLoading = false;
+                if (GoalToEdit != null)
                 {
-                    Name = GoalToEdit.Name,
-                    TargetAmount = GoalToEdit.TargetAmount,
-                    TargetDate = GoalToEdit.TargetDate
-                };
-                currentAmount = GoalToEdit.CurrentAmount;
-                contributeModel = new ContributeRequest { Amount = 100 };
-            }
-            else
-            {
-                model = new CreateSavingsGoalRequest
+                    model = new CreateSavingsGoalRequest
+                    {
+                        Name = GoalToEdit.Name,
+                        TargetAmount = GoalToEdit.TargetAmount,
+                        TargetDate = GoalToEdit.TargetDate
+                    };
+                    currentAmount = GoalToEdit.CurrentAmount;
+                    contributeModel = new ContributeRequest { Amount = 100 };
+                }
+                else
                 {
-                    Name = string.Empty,
-                    TargetAmount = 1000,
-                    TargetDate = DateTime.Today.AddMonths(6)
-                };
+                    model = new CreateSavingsGoalRequest
+                    {
+                        Name = string.Empty,
+                        TargetAmount = 1000,
+                        TargetDate = DateTime.Today.AddMonths(6)
+                    };
+                }
             }
         }
+        else
+        {
+            errorMessage = null;
+            isLoading = false;
+        }
+
+        wasOpen = IsOpen;
+        previousGoalId = GoalToEdit?.Id;
+        previousIsContribute = IsContribute;
     }
 
     private async Task HandleGoalSubmit()

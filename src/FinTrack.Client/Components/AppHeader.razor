@@ -87,23 +87,11 @@
             </nav>
         </div>
 
-        <div class="app-header-right">
-            <button class="icon-button" @onclick="ToggleNotifications" title="Notifications" aria-label="Notifications">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-                @if (hasUnreadNotifications)
-                {
-                    <span class="notification-badge"></span>
-                }
-            </button>
-        </div>
+        <div class="app-header-right"></div>
     </div>
 </header>
 
 @code {
-    private bool hasUnreadNotifications = true;
     private bool isProfileMenuOpen = false;
     private bool isAuthenticated = true;
     private string userName = "Samuel Watson";
@@ -155,10 +143,6 @@
         Nav.NavigateTo("login");
     }
 
-    private void ToggleNotifications()
-    {
-        hasUnreadNotifications = !hasUnreadNotifications;
-    }
 
     public void Dispose()
     {

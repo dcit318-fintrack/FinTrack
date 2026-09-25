@@ -207,6 +207,8 @@ html, body {
 .app-header-right {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    min-width: 40px;
     gap: 8px;
 }
 
