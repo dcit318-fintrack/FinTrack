@@ -65,53 +65,40 @@ html, body {
 /* App Desktop & Mobile Viewport Wrapper */
 .app-viewport {
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column;
     min-height: 100vh;
-    padding: 0;
-    background-color: #F8FAFC;
-}
-
-@media (min-width: 768px) {
-    .app-viewport {
-        background-color: #F1F5F9;
-        padding: 24px 20px;
-    }
+    width: 100%;
+    background-color: var(--bg-page);
 }
 
 .app-frame {
     width: 100%;
-    max-width: 100%;
     min-height: 100vh;
     background-color: var(--bg-page);
     display: flex;
     flex-direction: column;
     position: relative;
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
-}
-
-@media (min-width: 768px) {
-    .app-frame {
-        max-width: 1140px;
-        min-height: 880px;
-        border-radius: 24px;
-        border: 1px solid #E2E8F0;
-        box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(0,0,0,0.03);
-        overflow: hidden;
-    }
 }
 
 /* Main Content Area */
 .app-main-content {
     flex: 1;
-    overflow-y: auto;
-    padding: 16px 20px 100px 20px;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0px)) 16px;
     scroll-behavior: smooth;
 }
 
 @media (min-width: 768px) {
     .app-main-content {
-        padding: 28px 36px 40px 36px;
+        padding: 28px 32px 48px 32px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .app-main-content {
+        padding: 32px 40px 60px 40px;
     }
 }
 
@@ -125,10 +112,7 @@ html, body {
 
 /* Top App Header */
 .app-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
+    width: 100%;
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     position: sticky;
@@ -136,9 +120,25 @@ html, body {
     z-index: 40;
 }
 
+.app-header-inner {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+}
+
 @media (min-width: 768px) {
-    .app-header {
-        padding: 16px 36px;
+    .app-header-inner {
+        padding: 16px 32px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .app-header-inner {
+        padding: 16px 40px;
     }
 }
 
@@ -556,18 +556,53 @@ html, body {
     box-shadow: var(--shadow-card);
 }
 
-/* Floating Action Button (FAB) */
+/* Transactions Header & Desktop Add Button */
+.transactions-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    gap: 16px;
+}
+
+.transactions-header-row .page-main-title {
+    margin-bottom: 0;
+}
+
+.btn-add-transaction-desktop {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    height: 42px;
+    padding: 0 20px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: var(--radius-pill);
+    margin-top: 0;
+    box-shadow: 0 4px 14px rgba(4, 120, 87, 0.25);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+    .btn-add-transaction-desktop {
+        display: inline-flex;
+    }
+}
+
+/* Floating Action Button (FAB) - Mobile Only */
 .fab-container {
     position: fixed;
-    bottom: 84px;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     right: 20px;
-    z-index: 50;
+    z-index: 45;
 }
 
 @media (min-width: 768px) {
     .fab-container {
-        bottom: 32px;
-        right: 32px;
+        display: none !important;
     }
 }
 
@@ -887,28 +922,67 @@ html, body {
 }
 
 /* ==========================================================================
-   Bottom Navigation Bar
+   Bottom Navigation Bar (Mobile / Small Screens)
    ========================================================================== */
 
 .bottom-nav-bar {
-    position: absolute;
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 74px;
-    background-color: #FFFFFF;
+    width: 100%;
+    min-height: 60px;
+    background-color: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 6px 12px 10px 12px;
-    z-index: 40;
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px)) 12px;
+    z-index: 50;
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.05);
 }
 
 @media (min-width: 768px) {
     .bottom-nav-bar {
         display: none !important;
     }
+}
+
+.nav-tab-item {
+    flex: 1;
+    max-width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    gap: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    box-sizing: border-box;
+}
+
+.nav-tab-item svg {
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.nav-tab-item.active {
+    background-color: var(--nav-active-pill);
+    color: var(--nav-active-text);
+    padding: 6px 10px;
+}
+
+.nav-tab-item.active svg {
+    color: var(--nav-active-text);
 }
 
 /* ==========================================================================
@@ -948,37 +1022,9 @@ html, body {
 /* Transactions Desktop Layout */
 @media (min-width: 768px) {
     .transactions-page {
-        max-width: 820px;
+        max-width: 960px;
         margin: 0 auto;
     }
-}
-
-.nav-tab-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 600;
-    gap: 4px;
-    transition: all 0.2s ease;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    padding: 6px 12px;
-    border-radius: var(--radius-pill);
-}
-
-.nav-tab-item.active {
-    background-color: var(--nav-active-pill);
-    color: var(--nav-active-text);
-    padding: 6px 16px;
-}
-
-.nav-tab-item.active svg {
-    color: var(--nav-active-text);
 }
 
 /* ==========================================================================
@@ -1247,28 +1293,27 @@ html, body {
 
 /* Auth Styles */
 .auth-main-content {
-    padding: 40px 20px 30px 20px !important;
+    padding: 40px 20px !important;
     display: flex;
     flex-direction: column;
+    align-items: center;
     justify-content: center;
     min-height: 100vh;
-}
-
-@media (min-width: 640px) {
-    .auth-main-content {
-        min-height: 840px;
-    }
+    width: 100%;
+    max-width: 100% !important;
+    background-color: var(--bg-page);
 }
 
 .auth-page-container {
     padding: 10px 4px;
-    max-width: 380px;
+    max-width: 440px;
     width: 100%;
     margin: 0 auto;
 }
 
 .auth-header-logo {
-    margin-bottom: 8px;
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 .auth-error-alert {
