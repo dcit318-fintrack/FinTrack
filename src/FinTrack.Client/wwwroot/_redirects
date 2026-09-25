@@ -1,2 +1,2 @@
-/api/* http://fintrack-web.runasp.net/api/:splat 200
+/api/* http://fintrack-web.runasp.net/api/:splat 200!
 /* /index.html 200

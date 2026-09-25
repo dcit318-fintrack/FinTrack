@@ -28,7 +28,7 @@ public class AuthService : IAuthService
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync();
-            throw new InvalidOperationException($"Login failed ({(int)response.StatusCode}): {errorBody}");
+            throw new InvalidOperationException(ExtractErrorMessage(errorBody, (int)response.StatusCode, "Login failed."));
         }
 
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>()
@@ -51,7 +51,7 @@ public class AuthService : IAuthService
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync();
-            throw new InvalidOperationException($"Registration failed ({(int)response.StatusCode}): {errorBody}");
+            throw new InvalidOperationException(ExtractErrorMessage(errorBody, (int)response.StatusCode, "Registration failed."));
         }
 
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>()
@@ -115,4 +115,99 @@ public class AuthService : IAuthService
         }
         return _currentUserName;
     }
+
+    private static string ExtractErrorMessage(string? errorBody, int statusCode, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(errorBody))
+        {
+            return $"{fallback} (Status {statusCode})";
+        }
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(errorBody);
+            var root = doc.RootElement;
+
+            // 1. Check if there are detailed validation errors in "errors" property
+            if (root.TryGetProperty("errors", out var errorsProp))
+            {
+                if (errorsProp.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    var errorList = new List<string>();
+                    foreach (var prop in errorsProp.EnumerateObject())
+                    {
+                        if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            foreach (var item in prop.Value.EnumerateArray())
+                            {
+                                var s = item.GetString();
+                                if (!string.IsNullOrWhiteSpace(s))
+                                {
+                                    errorList.Add(s);
+                                }
+                            }
+                        }
+                        else if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            var s = prop.Value.GetString();
+                            if (!string.IsNullOrWhiteSpace(s))
+                            {
+                                errorList.Add(s);
+                            }
+                        }
+                    }
+                    if (errorList.Count > 0)
+                    {
+                        return string.Join(" ", errorList);
+                    }
+                }
+                else if (errorsProp.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    var errorList = new List<string>();
+                    foreach (var item in errorsProp.EnumerateArray())
+                    {
+                        var s = item.GetString();
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            errorList.Add(s);
+                        }
+                    }
+                    if (errorList.Count > 0)
+                    {
+                        return string.Join(" ", errorList);
+                    }
+                }
+            }
+
+            // 2. Check for "message" property
+            if (root.TryGetProperty("message", out var messageProp) && messageProp.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var msg = messageProp.GetString();
+                if (!string.IsNullOrWhiteSpace(msg))
+                {
+                    return msg;
+                }
+            }
+
+            // 3. Check for "title" property (ProblemDetails)
+            if (root.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var title = titleProp.GetString();
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    return title;
+                }
+            }
+        }
+        catch
+        {
+            if (errorBody.Length < 200 && !errorBody.Contains('<'))
+            {
+                return errorBody;
+            }
+        }
+
+        return $"{fallback} (Status {statusCode})";
+    }
 }
+

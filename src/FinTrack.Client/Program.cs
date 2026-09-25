@@ -22,8 +22,11 @@ builder.Services.AddScoped(sp =>
     authHandler.InnerHandler = new HttpClientHandler();
     var http = new HttpClient(authHandler);
     var apiUrl = builder.Configuration["ApiBaseUrl"];
-    if (string.IsNullOrWhiteSpace(apiUrl))
+    var isHttpsHost = builder.HostEnvironment.BaseAddress.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    if (string.IsNullOrWhiteSpace(apiUrl) || apiUrl == "/" || (isHttpsHost && apiUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)))
     {
+        // On HTTPS hosts (like Netlify), use same-origin BaseAddress to route through the secure proxy
         http.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
     }
     else
