@@ -20,9 +20,6 @@
 **/bin/
 **/obj/
 
-# --- Blazor WASM client ---
-src/FinTrack.Client/
-
 # --- Tests ---
 tests/
 

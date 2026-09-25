@@ -20,8 +20,17 @@ builder.Services.AddScoped(sp =>
     var authHandler = sp.GetRequiredService<AuthenticationHandler>();
     authHandler.InnerHandler = new HttpClientHandler();
     var http = new HttpClient(authHandler);
-    var apiUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
-    http.BaseAddress = new Uri(apiUrl);
+    var apiUrl = builder.Configuration["ApiBaseUrl"];
+    if (string.IsNullOrWhiteSpace(apiUrl))
+    {
+        http.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+    }
+    else
+    {
+        http.BaseAddress = Uri.TryCreate(apiUrl, UriKind.Absolute, out var absUri)
+            ? absUri
+            : new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiUrl);
+    }
     return http;
 });
 
