@@ -2,5 +2,14 @@
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
   Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
 /appsettings*.json
   Cache-Control: no-cache, no-store, must-revalidate
+/_framework/dotnet.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/_framework/blazor.webassembly.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/_framework/FinTrack.Client.wasm
+  Cache-Control: no-cache, no-store, must-revalidate
+
