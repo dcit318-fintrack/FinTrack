@@ -93,40 +93,56 @@
     private bool isLoading;
     private bool isDeleting;
     private string? errorMessage;
+    private bool wasOpen;
+    private Guid? previousBudgetId;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
-            errorMessage = null;
-            try
-            {
-                categories = await ApiService.GetCategoriesAsync();
-            }
-            catch (Exception ex)
-            {
-                errorMessage = $"Failed to load categories: {ex.Message}";
-            }
+            bool isNewOpen = !wasOpen;
+            bool isDifferentBudget = BudgetToEdit?.Id != previousBudgetId;
 
-            if (BudgetToEdit != null)
+            if (isNewOpen || isDifferentBudget)
             {
-                model = new CreateBudgetRequest
+                errorMessage = null;
+                try
                 {
-                    CategoryId = BudgetToEdit.CategoryId,
-                    Limit = BudgetToEdit.Limit,
-                    Month = BudgetToEdit.Month
-                };
-            }
-            else
-            {
-                model = new CreateBudgetRequest
+                    categories = await ApiService.GetCategoriesAsync();
+                }
+                catch (Exception ex)
                 {
-                    CategoryId = categories.FirstOrDefault(c => c.Type == "Expense")?.Id ?? Guid.Empty,
-                    Limit = 500,
-                    Month = DateTime.Today.ToString("yyyy-MM")
-                };
+                    errorMessage = $"Failed to load categories: {ex.Message}";
+                }
+
+                if (BudgetToEdit != null)
+                {
+                    model = new CreateBudgetRequest
+                    {
+                        CategoryId = BudgetToEdit.CategoryId,
+                        Limit = BudgetToEdit.Limit,
+                        Month = BudgetToEdit.Month
+                    };
+                }
+                else
+                {
+                    model = new CreateBudgetRequest
+                    {
+                        CategoryId = categories.FirstOrDefault(c => c.Type == "Expense")?.Id ?? Guid.Empty,
+                        Limit = 500,
+                        Month = DateTime.Today.ToString("yyyy-MM")
+                    };
+                }
             }
         }
+        else
+        {
+            errorMessage = null;
+            isLoading = false;
+        }
+
+        wasOpen = IsOpen;
+        previousBudgetId = BudgetToEdit?.Id;
     }
 
     private async Task HandleSubmit()

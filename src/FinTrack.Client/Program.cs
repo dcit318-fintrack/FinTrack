@@ -12,6 +12,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
 culture.NumberFormat.CurrencySymbol = "GH₵";
 culture.NumberFormat.CurrencyPositivePattern = 0;
+culture.NumberFormat.CurrencyNegativePattern = 1;
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
