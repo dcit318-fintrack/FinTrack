@@ -12,7 +12,7 @@
             <!-- Balance & Stats Card -->
             <div class="fintrack-card">
                 <div class="balance-card-label">Total Balance</div>
-                <div class="balance-card-amount">@summary.Balance.ToString("C2")</div>
+                <div class="balance-card-amount @(summary.Balance < 0 ? "negative" : "")">@summary.Balance.ToString("C2")</div>
 
                 <div class="stats-grid-2">
                     <div class="stat-box">
