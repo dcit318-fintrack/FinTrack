@@ -28,7 +28,8 @@ public class AuthService : IAuthService
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync();
-            throw new InvalidOperationException($"Login failed ({(int)response.StatusCode}): {errorBody}");
+            var message = FinTrackApiService.ExtractErrorMessage(errorBody, response.StatusCode, response.ReasonPhrase);
+            throw new InvalidOperationException(message);
         }
 
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>()
@@ -51,7 +52,8 @@ public class AuthService : IAuthService
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync();
-            throw new InvalidOperationException($"Registration failed ({(int)response.StatusCode}): {errorBody}");
+            var message = FinTrackApiService.ExtractErrorMessage(errorBody, response.StatusCode, response.ReasonPhrase);
+            throw new InvalidOperationException(message);
         }
 
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>()

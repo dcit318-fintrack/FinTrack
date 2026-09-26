@@ -57,7 +57,7 @@
                     <label class="form-label">Category</label>
                     <select class="form-control-select" @bind="model.CategoryId" disabled="@isLoading" required>
                         <option value="@Guid.Empty">-- Select Category --</option>
-                        @foreach (var cat in categories.Where(c => c.Type == model.Type))
+                        @foreach (var cat in categories.Where(c => c.Type == model.Type || c.Name.Equals("Other", StringComparison.OrdinalIgnoreCase)))
                         {
                             <option value="@cat.Id">@cat.Name</option>
                         }
@@ -70,8 +70,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Date</label>
-                    <input type="datetime-local" class="form-control-input" @bind-value="model.Date" @bind-value:format="yyyy-MM-ddTHH:mm" disabled="@isLoading" required />
+                    <label class="form-label">Date &amp; Time</label>
+                    <InputDate Type="InputDateType.DateTimeLocal" class="form-control-input" @bind-Value="model.Date" disabled="@isLoading" required />
                 </div>
 
                 <button type="submit" class="btn-primary-action" disabled="@isLoading">
@@ -108,40 +108,56 @@
     private List<CategoryDto> categories = new();
     private string? errorMessage;
     private bool isLoading;
+    private bool wasOpen;
+    private Guid? previousTxId;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
-            errorMessage = null;
-            isLoading = false;
-            categories = await ApiService.GetCategoriesAsync();
+            bool isNewOpen = !wasOpen;
+            bool isDifferentTx = TransactionToEdit?.Id != previousTxId;
 
-            if (TransactionToEdit != null)
+            if (isNewOpen || isDifferentTx)
             {
-                model = new CreateTransactionRequest
+                errorMessage = null;
+                isLoading = false;
+                categories = await ApiService.GetCategoriesAsync();
+
+                if (TransactionToEdit != null)
                 {
-                    Amount = TransactionToEdit.Amount,
-                    Type = TransactionToEdit.Type,
-                    CategoryId = TransactionToEdit.CategoryId,
-                    Description = TransactionToEdit.Description,
-                    Date = TransactionToEdit.Date
-                };
-            }
-            else
-            {
-                var initialType = "Expense";
-                var defaultCat = categories.FirstOrDefault(c => c.Type == initialType)?.Id ?? Guid.Empty;
-                model = new CreateTransactionRequest
+                    model = new CreateTransactionRequest
+                    {
+                        Amount = TransactionToEdit.Amount,
+                        Type = TransactionToEdit.Type,
+                        CategoryId = TransactionToEdit.CategoryId,
+                        Description = TransactionToEdit.Description,
+                        Date = TransactionToEdit.Date
+                    };
+                }
+                else
                 {
-                    Amount = 0,
-                    Type = initialType,
-                    CategoryId = defaultCat,
-                    Description = string.Empty,
-                    Date = DateTime.Now
-                };
+                    var initialType = "Expense";
+                    var defaultCat = categories.FirstOrDefault(c => c.Type == initialType)?.Id ?? Guid.Empty;
+                    model = new CreateTransactionRequest
+                    {
+                        Amount = 0,
+                        Type = initialType,
+                        CategoryId = defaultCat,
+                        Description = string.Empty,
+                        Date = DateTime.Now
+                    };
+                }
             }
         }
+        else
+        {
+            errorMessage = null;
+            isLoading = false;
+        }
+
+        wasOpen = IsOpen;
+        previousTxId = TransactionToEdit?.Id;
     }
 
     private void SetType(string newType)
@@ -150,7 +166,7 @@
         model.Type = newType;
         errorMessage = null;
 
-        var matchingCats = categories.Where(c => c.Type == newType).ToList();
+        var matchingCats = categories.Where(c => c.Type == newType || c.Name.Equals("Other", StringComparison.OrdinalIgnoreCase)).ToList();
         if (!matchingCats.Any(c => c.Id == model.CategoryId))
         {
             model.CategoryId = matchingCats.FirstOrDefault()?.Id ?? Guid.Empty;
@@ -160,7 +176,7 @@
     private async Task HandleSubmit()
     {
         errorMessage = null;
-        var matchingCats = categories.Where(c => c.Type == model.Type).ToList();
+        var matchingCats = categories.Where(c => c.Type == model.Type || c.Name.Equals("Other", StringComparison.OrdinalIgnoreCase)).ToList();
         if (model.CategoryId == Guid.Empty && matchingCats.Any())
         {
             model.CategoryId = matchingCats.First().Id;

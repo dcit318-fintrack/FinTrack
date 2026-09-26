@@ -219,49 +219,126 @@ public class FinTrackApiService : IFinTrackApiService
     {
         if (response.IsSuccessStatusCode) return;
 
-        string? errorMessage = null;
+        string rawContent = string.Empty;
         try
         {
-            var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-            if (errorResponse != null && !string.IsNullOrWhiteSpace(errorResponse.Message))
+            rawContent = await response.Content.ReadAsStringAsync();
+        }
+        catch
+        {
+            // Ignore read failure
+        }
+
+        string errorMessage = ExtractErrorMessage(rawContent, response.StatusCode, response.ReasonPhrase);
+        throw new InvalidOperationException(errorMessage);
+    }
+
+    public static string ExtractErrorMessage(string rawContent, System.Net.HttpStatusCode statusCode, string? reasonPhrase = null)
+    {
+        if (string.IsNullOrWhiteSpace(rawContent))
+        {
+            return $"Request failed with status code {(int)statusCode} ({reasonPhrase ?? statusCode.ToString()}).";
+        }
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(rawContent);
+            var root = doc.RootElement;
+
+            // 1. Validation Problem Details "errors" dictionary (e.g. { "errors": { "Amount": ["..."] } })
+            if (root.TryGetProperty("errors", out var errorsProp))
             {
-                if (errorResponse.Errors != null && errorResponse.Errors.Count > 0)
+                if (errorsProp.ValueKind == System.Text.Json.JsonValueKind.Object)
                 {
-                    var details = string.Join("; ", errorResponse.Errors.SelectMany(e => e.Value));
-                    errorMessage = $"{errorResponse.Message} ({details})";
+                    var messages = new List<string>();
+                    foreach (var prop in errorsProp.EnumerateObject())
+                    {
+                        if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            foreach (var item in prop.Value.EnumerateArray())
+                            {
+                                var s = item.GetString();
+                                if (!string.IsNullOrWhiteSpace(s)) messages.Add(s);
+                            }
+                        }
+                        else if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            var s = prop.Value.GetString();
+                            if (!string.IsNullOrWhiteSpace(s)) messages.Add(s);
+                        }
+                    }
+                    if (messages.Count > 0)
+                    {
+                        return string.Join("; ", messages);
+                    }
                 }
-                else
+                else if (errorsProp.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
-                    errorMessage = errorResponse.Message;
+                    var messages = errorsProp.EnumerateArray()
+                        .Select(e => e.GetString())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .ToList();
+                    if (messages.Count > 0)
+                    {
+                        return string.Join("; ", messages);
+                    }
+                }
+            }
+
+            // 2. ErrorResponse.Message (e.g. { "message": "Invalid credentials" })
+            if (root.TryGetProperty("message", out var msgProp) && msgProp.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var msg = msgProp.GetString();
+                if (!string.IsNullOrWhiteSpace(msg)) return msg;
+            }
+
+            // 3. ProblemDetails.Detail (e.g. { "detail": "The record was not found." })
+            if (root.TryGetProperty("detail", out var detailProp) && detailProp.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var detail = detailProp.GetString();
+                if (!string.IsNullOrWhiteSpace(detail)) return detail;
+            }
+
+            // 4. ProblemDetails.Title
+            if (root.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var title = titleProp.GetString();
+                if (!string.IsNullOrWhiteSpace(title) && !title.Equals("One or more validation errors occurred.", StringComparison.OrdinalIgnoreCase))
+                {
+                    return title;
+                }
+            }
+
+            // 5. Array of Identity errors [{ "code": "...", "description": "..." }]
+            if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                var descriptions = new List<string>();
+                foreach (var item in root.EnumerateArray())
+                {
+                    if (item.TryGetProperty("description", out var desc))
+                    {
+                        var s = desc.GetString();
+                        if (!string.IsNullOrWhiteSpace(s)) descriptions.Add(s);
+                    }
+                }
+                if (descriptions.Count > 0)
+                {
+                    return string.Join("; ", descriptions);
                 }
             }
         }
         catch
         {
-            // Ignore JSON parse failure and fallback below
+            // Fall through if not valid JSON
         }
 
-        if (string.IsNullOrWhiteSpace(errorMessage))
+        // If it's a plain text string (not starting with { or [), return it if readable
+        var trimmed = rawContent.Trim();
+        if (!trimmed.StartsWith("{") && !trimmed.StartsWith("<") && !trimmed.StartsWith("["))
         {
-            try
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                if (!string.IsNullOrWhiteSpace(content))
-                {
-                    errorMessage = content;
-                }
-            }
-            catch
-            {
-                // Ignore read failure
-            }
+            return trimmed;
         }
 
-        if (string.IsNullOrWhiteSpace(errorMessage))
-        {
-            errorMessage = $"Request failed with status code {(int)response.StatusCode} ({response.ReasonPhrase}).";
-        }
-
-        throw new InvalidOperationException(errorMessage);
+        return $"Request failed with status code {(int)statusCode} ({reasonPhrase ?? statusCode.ToString()}).";
     }
 }

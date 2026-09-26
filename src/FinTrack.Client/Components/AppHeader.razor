@@ -4,98 +4,94 @@
 @implements IDisposable
 
 <header class="app-header">
-    <div class="app-header-left" style="position: relative;">
-        <!-- Avatar Button -->
-        <img src="images/avatar.svg" alt="User Profile" class="app-avatar" @onclick="ToggleProfileMenu" style="cursor: pointer;" />
-        
-        @if (isProfileMenuOpen)
-        {
-            <!-- Full screen invisible click backdrop to dismiss menu on any outside click -->
-            <div class="profile-backdrop" @onclick="CloseProfileMenu"></div>
+    <div class="app-header-inner">
+        <div class="app-header-left" style="position: relative;">
+            <!-- Avatar Button -->
+            <img src="images/avatar.svg" alt="User Profile" class="app-avatar" @onclick="ToggleProfileMenu" style="cursor: pointer;" />
+            
+            @if (isProfileMenuOpen)
+            {
+                <!-- Full screen invisible click backdrop to dismiss menu on any outside click -->
+                <div class="profile-backdrop" @onclick="CloseProfileMenu"></div>
 
-            <!-- Profile dropdown card -->
-            <div class="profile-dropdown-menu" @onclick:stopPropagation="true">
-                <div class="profile-menu-header">
-                    <strong>@(isAuthenticated ? userName : "Guest User")</strong>
-                    @if (isAuthenticated && !string.IsNullOrEmpty(userEmail))
+                <!-- Profile dropdown card -->
+                <div class="profile-dropdown-menu" @onclick:stopPropagation="true">
+                    <div class="profile-menu-header">
+                        <strong>@(isAuthenticated ? userName : "Guest User")</strong>
+                        @if (isAuthenticated && !string.IsNullOrEmpty(userEmail))
+                        {
+                            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px;">@userEmail</span>
+                        }
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 6px 0;" />
+                    
+                    @if (isAuthenticated)
                     {
-                        <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px;">@userEmail</span>
+                        <!-- Only show Sign Out when logged in -->
+                        <button class="profile-menu-item" style="border: none; background: transparent; width: 100%; text-align: left; color: #DC2626; font-weight: 600;" @onclick="HandleLogout">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Sign Out
+                        </button>
+                    }
+                    else
+                    {
+                        <!-- Only show Sign In and Register when logged out -->
+                        <NavLink href="login" class="profile-menu-item" @onclick="CloseProfileMenu">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                <polyline points="10 17 15 12 10 7"></polyline>
+                                <line x1="15" y1="12" x2="3" y2="12"></line>
+                            </svg>
+                            Sign In
+                        </NavLink>
+                        <NavLink href="register" class="profile-menu-item" @onclick="CloseProfileMenu">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="8.5" cy="7" r="4"></circle>
+                            </svg>
+                            Register
+                        </NavLink>
                     }
                 </div>
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 6px 0;" />
-                
-                @if (isAuthenticated)
-                {
-                    <!-- Only show Sign Out when logged in -->
-                    <button class="profile-menu-item" style="border: none; background: transparent; width: 100%; text-align: left; color: #DC2626; font-weight: 600;" @onclick="HandleLogout">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                            <polyline points="16 17 21 12 16 7"></polyline>
-                            <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                        Sign Out
-                    </button>
-                }
-                else
-                {
-                    <!-- Only show Sign In and Register when logged out -->
-                    <NavLink href="login" class="profile-menu-item" @onclick="CloseProfileMenu">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
-                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                            <polyline points="10 17 15 12 10 7"></polyline>
-                            <line x1="15" y1="12" x2="3" y2="12"></line>
-                        </svg>
-                        Sign In
-                    </NavLink>
-                    <NavLink href="register" class="profile-menu-item" @onclick="CloseProfileMenu">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="8.5" cy="7" r="4"></circle>
-                        </svg>
-                        Register
-                    </NavLink>
-                }
-            </div>
-        }
-    </div>
-    
-    <div class="app-header-center">
-        <NavLink href="" style="text-decoration: none;" @onclick="CloseProfileMenu">
-            <span class="app-brand-title">Fintrack</span>
-        </NavLink>
-
-        <nav class="desktop-header-nav" aria-label="Desktop Navigation">
-            <NavLink class="desktop-nav-link" href="" Match="NavLinkMatch.All">
-                Dashboard
-            </NavLink>
-            <NavLink class="desktop-nav-link" href="transactions">
-                Transactions
-            </NavLink>
-            <NavLink class="desktop-nav-link" href="budgets">
-                Budget &amp; Savings
-            </NavLink>
-            <NavLink class="desktop-nav-link" href="reports">
-                Reports
-            </NavLink>
-        </nav>
-    </div>
-
-    <div class="app-header-right">
-        <button class="icon-button" @onclick="ToggleNotifications" title="Notifications" aria-label="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            @if (hasUnreadNotifications)
-            {
-                <span class="notification-badge"></span>
             }
-        </button>
+        </div>
+        
+        <div class="app-header-center">
+            <NavLink href="" style="text-decoration: none; display: flex; align-items: center; gap: 8px;" @onclick="CloseProfileMenu">
+                <div class="category-icon-circle mint" style="width: 30px; height: 30px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2">
+                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                        <circle cx="12" cy="12" r="2"></circle>
+                    </svg>
+                </div>
+                <span class="app-brand-title">FinTrack</span>
+            </NavLink>
+
+            <nav class="desktop-header-nav" aria-label="Desktop Navigation">
+                <NavLink class="desktop-nav-link" href="" Match="NavLinkMatch.All">
+                    Dashboard
+                </NavLink>
+                <NavLink class="desktop-nav-link" href="transactions">
+                    Transactions
+                </NavLink>
+                <NavLink class="desktop-nav-link" href="budgets">
+                    Budget &amp; Savings
+                </NavLink>
+                <NavLink class="desktop-nav-link" href="reports">
+                    Reports
+                </NavLink>
+            </nav>
+        </div>
+
+        <div class="app-header-right"></div>
     </div>
 </header>
 
 @code {
-    private bool hasUnreadNotifications = true;
     private bool isProfileMenuOpen = false;
     private bool isAuthenticated = true;
     private string userName = "Samuel Watson";
@@ -147,10 +143,6 @@
         Nav.NavigateTo("login");
     }
 
-    private void ToggleNotifications()
-    {
-        hasUnreadNotifications = !hasUnreadNotifications;
-    }
 
     public void Dispose()
     {
