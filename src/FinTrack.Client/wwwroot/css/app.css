@@ -1068,12 +1068,34 @@ html, body {
     font-family: inherit;
     color: var(--text-primary);
     outline: none;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-control-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px 16px;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.form-control-select::-ms-expand {
+    display: none;
 }
 
 .form-control-input:focus, .form-control-select:focus {
     border-color: var(--primary-green);
     background-color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12);
+}
+
+.form-control-select:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23047857' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 
 .type-toggle-group {
@@ -1356,4 +1378,180 @@ html, body {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Dark Theme / System Dark Mode Support
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-page: #111827;
+        --card-bg: #1F2937;
+        --card-bg-subtle: #111827;
+        --border-color: #374151;
+        --border-color-input: #4B5563;
+
+        --text-primary: #F9FAFB;
+        --text-secondary: #E5E7EB;
+        --text-muted: #9CA3AF;
+        --text-subtle: #6B7280;
+
+        --primary-green: #10B981;
+        --primary-green-dark: #059669;
+        --primary-green-light: #064E3B;
+        --primary-teal: #0D9488;
+    }
+
+    html, body {
+        background-color: #030712;
+        color: #F9FAFB;
+    }
+
+    .app-viewport {
+        background-color: #030712;
+    }
+
+    .app-frame {
+        background-color: #111827;
+        border-color: #374151;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+
+    .app-header {
+        background-color: #1F2937;
+        border-color: #374151;
+    }
+
+    .app-brand-title {
+        color: #F9FAFB;
+    }
+
+    .fintrack-card, .savings-summary-card {
+        background-color: #1F2937;
+        border-color: #374151;
+    }
+
+    .stat-box {
+        background-color: #111827;
+        border-color: #374151;
+    }
+
+    .search-input-wrapper {
+        background-color: #1F2937;
+        border-color: #374151;
+    }
+
+    .search-input {
+        color: #F9FAFB;
+    }
+
+    .filter-button {
+        background-color: #1F2937;
+        border-color: #374151;
+        color: #9CA3AF;
+    }
+
+    .transaction-card-wrapper {
+        background-color: #1F2937;
+        border-color: #374151;
+    }
+
+    .transaction-item:not(:last-child) {
+        border-bottom-color: #374151;
+    }
+
+    .transaction-name {
+        color: #F9FAFB;
+    }
+
+    .modal-sheet {
+        background-color: #1F2937;
+        color: #F9FAFB;
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-title {
+        color: #F9FAFB;
+    }
+
+    .modal-close-btn {
+        background: #374151;
+        color: #9CA3AF;
+    }
+
+    .modal-close-btn:hover {
+        background: #4B5563;
+        color: #F9FAFB;
+    }
+
+    .form-control-input, .form-control-select {
+        background-color: #111827;
+        border-color: #4B5563;
+        color: #F9FAFB;
+    }
+
+    .form-control-input:focus, .form-control-select:focus {
+        border-color: #10B981;
+        background-color: #1F2937;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+
+    .form-control-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    }
+
+    .form-control-select:focus {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2310B981' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    }
+
+    .type-toggle-btn {
+        background-color: #111827;
+        border-color: #374151;
+        color: #9CA3AF;
+    }
+
+    .type-toggle-btn.active.expense {
+        background-color: #450A0A;
+        border-color: #EF4444;
+        color: #FCA5A5;
+    }
+
+    .type-toggle-btn.active.income {
+        background-color: #064E3B;
+        border-color: #10B981;
+        color: #6EE7B7;
+    }
+
+    .modal-alert-error {
+        background-color: #450A0A;
+        border-color: #7F1D1D;
+        color: #FCA5A5;
+    }
+
+    .modal-alert-close-btn {
+        color: #FCA5A5;
+    }
+
+    .bottom-nav-bar {
+        background-color: #1F2937;
+        border-top-color: #374151;
+    }
+
+    .nav-tab-item {
+        color: #9CA3AF;
+    }
+
+    .profile-dropdown-menu {
+        background-color: #1F2937;
+        border-color: #374151;
+        color: #F9FAFB;
+    }
+
+    .profile-menu-item {
+        color: #F9FAFB;
+    }
+
+    .profile-menu-item:hover {
+        background-color: #374151;
+    }
 }

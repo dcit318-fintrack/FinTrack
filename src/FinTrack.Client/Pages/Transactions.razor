@@ -48,7 +48,7 @@
                             <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
                             <div class="transaction-info">
                                 <span class="transaction-name">@tx.Description</span>
-                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToString("hh:mm tt")</span>
+                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToLocalTime().ToString("hh:mm tt")</span>
                             </div>
                         </div>
                         <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
@@ -72,7 +72,7 @@
                             <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
                             <div class="transaction-info">
                                 <span class="transaction-name">@tx.Description</span>
-                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToString("hh:mm tt")</span>
+                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToLocalTime().ToString("hh:mm tt")</span>
                             </div>
                         </div>
                         <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
@@ -96,7 +96,7 @@
                             <CategoryIcon CategoryName="@tx.CategoryName" DescriptionText="@tx.Description" Type="@tx.Type" />
                             <div class="transaction-info">
                                 <span class="transaction-name">@tx.Description</span>
-                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToString("MMM d, hh:mm tt")</span>
+                                <span class="transaction-subtext">@tx.CategoryName • @tx.Date.ToLocalTime().ToString("MMM d, hh:mm tt")</span>
                             </div>
                         </div>
                         <div class="transaction-amount @(tx.Type == "Income" ? "income" : "expense")">
@@ -156,21 +156,38 @@
 
     private async Task LoadTransactions()
     {
-        var result = await ApiService.GetTransactionsAsync(
-            search: string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
-            type: selectedTypeFilter == "All" ? null : selectedTypeFilter
-        );
+        try
+        {
+            var result = await ApiService.GetTransactionsAsync(
+                search: string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
+                type: selectedTypeFilter == "All" ? null : selectedTypeFilter
+            );
 
-        allTransactions = result.Items;
-        GroupTransactions();
-        StateHasChanged();
+            allTransactions = result.Items;
+            GroupTransactions();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Nav.NavigateTo("login");
+        }
+        catch (Exception)
+        {
+            allTransactions = new();
+            todayTransactions = new();
+            yesterdayTransactions = new();
+            earlierTransactions = new();
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
     private void GroupTransactions()
     {
-        todayTransactions = allTransactions.Where(t => t.Date.Date == DateTime.Today).ToList();
-        yesterdayTransactions = allTransactions.Where(t => t.Date.Date == DateTime.Today.AddDays(-1)).ToList();
-        earlierTransactions = allTransactions.Where(t => t.Date.Date < DateTime.Today.AddDays(-1)).ToList();
+        todayTransactions = allTransactions.Where(t => t.Date.ToLocalTime().Date == DateTime.Today).ToList();
+        yesterdayTransactions = allTransactions.Where(t => t.Date.ToLocalTime().Date == DateTime.Today.AddDays(-1)).ToList();
+        earlierTransactions = allTransactions.Where(t => t.Date.ToLocalTime().Date < DateTime.Today.AddDays(-1)).ToList();
     }
 
     private void HandleDataChanged()

@@ -10,5 +10,6 @@ public interface IAuthService
     Task<bool> IsAuthenticatedAsync();
     Task<string> GetCurrentUserEmailAsync();
     Task<string> GetCurrentUserNameAsync();
+    Task<bool> RefreshTokenAsync();
     event Action? OnAuthStateChanged;
 }

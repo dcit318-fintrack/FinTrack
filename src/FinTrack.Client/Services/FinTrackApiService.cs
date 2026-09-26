@@ -259,7 +259,14 @@ public class FinTrackApiService : IFinTrackApiService
 
         if (string.IsNullOrWhiteSpace(errorMessage))
         {
-            errorMessage = $"Request failed with status code {(int)response.StatusCode} ({response.ReasonPhrase}).";
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Your session has expired. Please sign in again.";
+            }
+            else
+            {
+                errorMessage = $"Request failed with status code {(int)response.StatusCode} ({response.ReasonPhrase}).";
+            }
         }
 
         throw new InvalidOperationException(errorMessage);

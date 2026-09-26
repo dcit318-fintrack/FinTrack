@@ -115,17 +115,28 @@
         {
             errorMessage = null;
             isLoading = false;
-            categories = await ApiService.GetCategoriesAsync();
+            try
+            {
+                categories = await ApiService.GetCategoriesAsync();
+            }
+            catch (Exception)
+            {
+                categories = new();
+            }
 
             if (TransactionToEdit != null)
             {
+                var localDate = TransactionToEdit.Date.Kind == DateTimeKind.Utc
+                    ? TransactionToEdit.Date.ToLocalTime()
+                    : DateTime.SpecifyKind(TransactionToEdit.Date, DateTimeKind.Utc).ToLocalTime();
+
                 model = new CreateTransactionRequest
                 {
                     Amount = TransactionToEdit.Amount,
                     Type = TransactionToEdit.Type,
                     CategoryId = TransactionToEdit.CategoryId,
                     Description = TransactionToEdit.Description,
-                    Date = TransactionToEdit.Date
+                    Date = localDate
                 };
             }
             else
@@ -160,15 +171,37 @@
     private async Task HandleSubmit()
     {
         errorMessage = null;
-        var matchingCats = categories.Where(c => c.Type == model.Type).ToList();
-        if (model.CategoryId == Guid.Empty && matchingCats.Any())
+
+        if (model.Amount <= 0)
         {
-            model.CategoryId = matchingCats.First().Id;
+            errorMessage = "Amount must be greater than zero.";
+            return;
+        }
+
+        if (model.CategoryId == null || model.CategoryId == Guid.Empty)
+        {
+            var matching = categories.FirstOrDefault(c => c.Type == model.Type);
+            if (matching != null)
+            {
+                model.CategoryId = matching.Id;
+            }
+            else
+            {
+                errorMessage = "Please select a valid category.";
+                return;
+            }
         }
 
         isLoading = true;
         try
         {
+            var dateInUtc = model.Date.Kind switch
+            {
+                DateTimeKind.Utc => model.Date,
+                DateTimeKind.Local => model.Date.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(model.Date, DateTimeKind.Local).ToUniversalTime()
+            };
+
             if (IsEdit && TransactionToEdit != null)
             {
                 await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
@@ -177,12 +210,19 @@
                     Type = model.Type,
                     CategoryId = model.CategoryId,
                     Description = model.Description,
-                    Date = model.Date
+                    Date = dateInUtc
                 });
             }
             else
             {
-                await ApiService.CreateTransactionAsync(model);
+                await ApiService.CreateTransactionAsync(new CreateTransactionRequest
+                {
+                    Amount = model.Amount,
+                    Type = model.Type,
+                    CategoryId = model.CategoryId,
+                    Description = model.Description,
+                    Date = dateInUtc
+                });
             }
 
             await OnSaved.InvokeAsync();

@@ -38,6 +38,10 @@ public class AuthService : IAuthService
         _currentUserName = auth.FullName;
         _currentUserEmail = auth.Email;
         await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+        if (!string.IsNullOrWhiteSpace(auth.RefreshToken))
+        {
+            await _js.InvokeVoidAsync("localStorage.setItem", "refreshToken", auth.RefreshToken);
+        }
         await _js.InvokeVoidAsync("localStorage.setItem", "authUserName", _currentUserName);
         await _js.InvokeVoidAsync("localStorage.setItem", "authUserEmail", _currentUserEmail);
         OnAuthStateChanged?.Invoke();
@@ -61,6 +65,10 @@ public class AuthService : IAuthService
         _currentUserName = auth.FullName;
         _currentUserEmail = auth.Email;
         await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+        if (!string.IsNullOrWhiteSpace(auth.RefreshToken))
+        {
+            await _js.InvokeVoidAsync("localStorage.setItem", "refreshToken", auth.RefreshToken);
+        }
         await _js.InvokeVoidAsync("localStorage.setItem", "authUserName", _currentUserName);
         await _js.InvokeVoidAsync("localStorage.setItem", "authUserEmail", _currentUserEmail);
         OnAuthStateChanged?.Invoke();
@@ -72,29 +80,123 @@ public class AuthService : IAuthService
         _token = null;
         _currentUserName = string.Empty;
         _currentUserEmail = string.Empty;
-        await _js.InvokeVoidAsync("localStorage.removeItem", "authToken");
-        await _js.InvokeVoidAsync("localStorage.removeItem", "authUserName");
-        await _js.InvokeVoidAsync("localStorage.removeItem", "authUserEmail");
+        try
+        {
+            await _js.InvokeVoidAsync("localStorage.removeItem", "authToken");
+            await _js.InvokeVoidAsync("localStorage.removeItem", "refreshToken");
+            await _js.InvokeVoidAsync("localStorage.removeItem", "authUserName");
+            await _js.InvokeVoidAsync("localStorage.removeItem", "authUserEmail");
+        }
+        catch
+        {
+            // Ignore during teardown
+        }
         OnAuthStateChanged?.Invoke();
+    }
+
+    public async Task<bool> RefreshTokenAsync()
+    {
+        try
+        {
+            var refreshToken = await _js.InvokeAsync<string?>("localStorage.getItem", "refreshToken");
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                await LogoutAsync();
+                return false;
+            }
+
+            var response = await _http.PostAsJsonAsync("/api/auth/refresh", new RefreshTokenRequest { RefreshToken = refreshToken });
+            if (!response.IsSuccessStatusCode)
+            {
+                await LogoutAsync();
+                return false;
+            }
+
+            var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            if (auth == null || string.IsNullOrWhiteSpace(auth.AccessToken))
+            {
+                await LogoutAsync();
+                return false;
+            }
+
+            _token = auth.AccessToken;
+            _currentUserName = auth.FullName;
+            _currentUserEmail = auth.Email;
+            await _js.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+            if (!string.IsNullOrWhiteSpace(auth.RefreshToken))
+            {
+                await _js.InvokeVoidAsync("localStorage.setItem", "refreshToken", auth.RefreshToken);
+            }
+            await _js.InvokeVoidAsync("localStorage.setItem", "authUserName", _currentUserName);
+            await _js.InvokeVoidAsync("localStorage.setItem", "authUserEmail", _currentUserEmail);
+            OnAuthStateChanged?.Invoke();
+            return true;
+        }
+        catch
+        {
+            await LogoutAsync();
+            return false;
+        }
     }
 
     public async Task<bool> IsAuthenticatedAsync()
     {
-        if (!string.IsNullOrEmpty(_token))
+        if (string.IsNullOrEmpty(_token))
         {
-            return true;
+            try
+            {
+                _token = await _js.InvokeAsync<string?>("localStorage.getItem", "authToken");
+                _currentUserName = await _js.InvokeAsync<string?>("localStorage.getItem", "authUserName") ?? string.Empty;
+                _currentUserEmail = await _js.InvokeAsync<string?>("localStorage.getItem", "authUserEmail") ?? string.Empty;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
+        if (string.IsNullOrEmpty(_token))
+        {
+            return false;
+        }
+
+        // Check if JWT token has expired; if so, attempt automatic refresh
+        if (IsTokenExpired(_token))
+        {
+            return await RefreshTokenAsync();
+        }
+
+        return true;
+    }
+
+    private static bool IsTokenExpired(string token)
+    {
         try
         {
-            _token = await _js.InvokeAsync<string?>("localStorage.getItem", "authToken");
-            _currentUserName = await _js.InvokeAsync<string?>("localStorage.getItem", "authUserName") ?? string.Empty;
-            _currentUserEmail = await _js.InvokeAsync<string?>("localStorage.getItem", "authUserEmail") ?? string.Empty;
-            return !string.IsNullOrEmpty(_token);
+            var parts = token.Split('.');
+            if (parts.Length != 3) return true;
+
+            var payload = parts[1];
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var jsonBytes = Convert.FromBase64String(payload);
+            using var doc = System.Text.Json.JsonDocument.Parse(jsonBytes);
+            if (doc.RootElement.TryGetProperty("exp", out var expProp) && expProp.TryGetInt64(out var expSeconds))
+            {
+                var expTime = DateTimeOffset.FromUnixTimeSeconds(expSeconds);
+                // Consider expired 30 seconds before actual expiry to prevent edge-case 401s
+                return expTime <= DateTimeOffset.UtcNow.AddSeconds(30);
+            }
+            return false;
         }
         catch
         {
-            return false;
+            return true;
         }
     }
 
