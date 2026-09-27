@@ -224,6 +224,14 @@
                 _ => DateTime.SpecifyKind(model.Date, DateTimeKind.Local).ToUniversalTime()
             };
 
+            // If the date is near current time (within 15 minutes of right now),
+            // clamp it to 30 seconds ago so device clock drift never trips the server future validation
+            var nowUtc = DateTime.UtcNow;
+            if (dateInUtc > nowUtc.AddSeconds(-30) && dateInUtc <= nowUtc.AddMinutes(15))
+            {
+                dateInUtc = nowUtc.AddSeconds(-30);
+            }
+
             if (IsEdit && TransactionToEdit != null)
             {
                 await ApiService.UpdateTransactionAsync(TransactionToEdit.Id, new UpdateTransactionRequest
