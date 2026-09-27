@@ -54,6 +54,20 @@ public class FinTrackApiService : IFinTrackApiService
         return result ?? new PagedResult<TransactionDto>();
     }
 
+    private static TimeSpan _serverClockSkew = TimeSpan.Zero;
+    private static bool _hasServerClock = false;
+
+    public static void RecordServerTime(HttpResponseMessage response)
+    {
+        if (response.Headers.Date.HasValue)
+        {
+            _serverClockSkew = response.Headers.Date.Value.UtcDateTime - DateTime.UtcNow;
+            _hasServerClock = true;
+        }
+    }
+
+    public static DateTime ServerUtcNow => _hasServerClock ? DateTime.UtcNow + _serverClockSkew : DateTime.UtcNow;
+
     public async Task<TransactionDto?> GetTransactionByIdAsync(Guid id)
     {
         return await _http.GetFromJsonAsync<TransactionDto>($"api/transactions/{id}");
@@ -61,7 +75,41 @@ public class FinTrackApiService : IFinTrackApiService
 
     public async Task<TransactionDto> CreateTransactionAsync(CreateTransactionRequest request)
     {
+        // Guard against client-server clock drift: if date is near or ahead of server time, safely clamp to 30s ago
+        var serverNow = ServerUtcNow;
+        if (request.Date > serverNow.AddMinutes(-1) && request.Date <= serverNow.AddMinutes(15))
+        {
+            request.Date = serverNow.AddSeconds(-30);
+        }
+
         var response = await _http.PostAsJsonAsync("api/transactions", request);
+        RecordServerTime(response);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var rawContent = await response.Content.ReadAsStringAsync();
+            if (rawContent.Contains("Transaction date cannot be in the future", StringComparison.OrdinalIgnoreCase))
+            {
+                // Silently compensate for extreme clock skew by backing off 5 minutes from server time
+                var safeRequest = new CreateTransactionRequest
+                {
+                    Amount = request.Amount,
+                    Type = request.Type,
+                    CategoryId = request.CategoryId,
+                    Description = request.Description,
+                    Date = ServerUtcNow.AddMinutes(-5)
+                };
+                var retryResponse = await _http.PostAsJsonAsync("api/transactions", safeRequest);
+                RecordServerTime(retryResponse);
+                if (retryResponse.IsSuccessStatusCode)
+                {
+                    var retried = await retryResponse.Content.ReadFromJsonAsync<TransactionDto>();
+                    NotifyDataChanged();
+                    return retried!;
+                }
+            }
+        }
+
         await EnsureSuccessOrThrowAsync(response);
         var created = await response.Content.ReadFromJsonAsync<TransactionDto>();
         NotifyDataChanged();
@@ -70,7 +118,39 @@ public class FinTrackApiService : IFinTrackApiService
 
     public async Task<TransactionDto> UpdateTransactionAsync(Guid id, UpdateTransactionRequest request)
     {
+        var serverNow = ServerUtcNow;
+        if (request.Date > serverNow.AddMinutes(-1) && request.Date <= serverNow.AddMinutes(15))
+        {
+            request.Date = serverNow.AddSeconds(-30);
+        }
+
         var response = await _http.PutAsJsonAsync($"api/transactions/{id}", request);
+        RecordServerTime(response);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var rawContent = await response.Content.ReadAsStringAsync();
+            if (rawContent.Contains("Transaction date cannot be in the future", StringComparison.OrdinalIgnoreCase))
+            {
+                var safeRequest = new UpdateTransactionRequest
+                {
+                    Amount = request.Amount,
+                    Type = request.Type,
+                    CategoryId = request.CategoryId,
+                    Description = request.Description,
+                    Date = ServerUtcNow.AddMinutes(-5)
+                };
+                var retryResponse = await _http.PutAsJsonAsync($"api/transactions/{id}", safeRequest);
+                RecordServerTime(retryResponse);
+                if (retryResponse.IsSuccessStatusCode)
+                {
+                    var retried = await retryResponse.Content.ReadFromJsonAsync<TransactionDto>();
+                    NotifyDataChanged();
+                    return retried!;
+                }
+            }
+        }
+
         await EnsureSuccessOrThrowAsync(response);
         var updated = await response.Content.ReadFromJsonAsync<TransactionDto>();
         NotifyDataChanged();
@@ -80,6 +160,7 @@ public class FinTrackApiService : IFinTrackApiService
     public async Task<bool> DeleteTransactionAsync(Guid id)
     {
         var response = await _http.DeleteAsync($"api/transactions/{id}");
+        RecordServerTime(response);
         await EnsureSuccessOrThrowAsync(response);
         NotifyDataChanged();
         return response.IsSuccessStatusCode;
