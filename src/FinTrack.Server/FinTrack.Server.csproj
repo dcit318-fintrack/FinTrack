@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
@@ -23,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FinTrack.Shared\FinTrack.Shared.csproj" />
+    <ProjectReference Include="..\FinTrack.Client\FinTrack.Client.csproj" />
   </ItemGroup>
 
 </Project>

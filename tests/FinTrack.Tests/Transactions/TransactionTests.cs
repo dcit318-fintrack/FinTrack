@@ -99,10 +99,29 @@ public class TransactionTests(WebApplicationFactory<Program> factory)
             type = "Expense",
             categoryId = FoodCategoryId,
             description = "Test",
-            date = DateTime.UtcNow.AddDays(1)
+            date = DateTime.UtcNow.AddDays(2)
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateTransaction_WithClockSkewOrLocalTimezone_Returns201()
+    {
+        var token = await RegisterAndGetTokenAsync();
+        using var client = AuthenticatedClient(token);
+
+        // Simulate local time from a client slightly ahead of UTC (e.g. 15 minutes ahead)
+        var response = await client.PostAsJsonAsync("/api/transactions", new
+        {
+            amount = 100m,
+            type = "Expense",
+            categoryId = FoodCategoryId,
+            description = "Lunch with clock skew",
+            date = DateTime.UtcNow.AddMinutes(15)
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]

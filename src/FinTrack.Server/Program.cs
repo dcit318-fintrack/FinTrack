@@ -140,21 +140,29 @@ using (var scope = app.Services.CreateScope())
 
 app.UseMiddleware<ApiExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference();
-}
+app.MapOpenApi();
+app.MapScalarApiReference();
+app.MapGet("/swagger", () => Results.Redirect("/scalar/v1"));
 
 // Health check endpoint — use to verify Render deployment: GET /health
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.UseHttpsRedirection();
+
+// Serve Blazor WebAssembly framework files (_framework/*) and static assets (css, js, html)
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
+app.UseRouting();
+
 app.UseCors("AllowConfigured");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// SPA fallback: routes like /, /login, /register, /dashboard, etc. serve index.html
+app.MapFallbackToFile("index.html");
 
 app.Run();

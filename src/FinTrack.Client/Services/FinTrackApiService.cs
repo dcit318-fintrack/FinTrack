@@ -235,6 +235,11 @@ public class FinTrackApiService : IFinTrackApiService
 
     public static string ExtractErrorMessage(string rawContent, System.Net.HttpStatusCode statusCode, string? reasonPhrase = null)
     {
+        if (statusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return "Your session has expired. Please sign in again.";
+        }
+
         if (string.IsNullOrWhiteSpace(rawContent))
         {
             return $"Request failed with status code {(int)statusCode} ({reasonPhrase ?? statusCode.ToString()}).";

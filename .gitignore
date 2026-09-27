@@ -429,3 +429,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local deployment and publish archives
+publish/
+*.zip
+FinTrackBackend*/
+.DS_Store

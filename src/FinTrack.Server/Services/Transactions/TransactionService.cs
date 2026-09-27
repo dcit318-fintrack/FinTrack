@@ -142,7 +142,21 @@ public class TransactionService : ITransactionService
             return (false, null, "Validation failed.", errors);
         }
 
-        if (request.Date > DateTime.UtcNow.AddMinutes(5))
+        var requestUtcDate = request.Date.Kind switch
+        {
+            DateTimeKind.Utc => request.Date,
+            DateTimeKind.Local => request.Date.ToUniversalTime(),
+            _ => request.Date
+        };
+
+        // When UTC or Local, allow 1 hour tolerance for device clock skew.
+        // When Unspecified (e.g. client sent local time without offset), allow up to 16 hours
+        // so that users in any time zone (up to UTC+14) are not falsely rejected.
+        var maxAllowedTime = request.Date.Kind == DateTimeKind.Utc || request.Date.Kind == DateTimeKind.Local
+            ? DateTime.UtcNow.AddHours(1)
+            : DateTime.UtcNow.AddHours(16);
+
+        if (requestUtcDate > maxAllowedTime)
         {
             var errors = new Dictionary<string, string[]>
             {
@@ -163,7 +177,11 @@ public class TransactionService : ITransactionService
             Amount = Math.Round(request.Amount, 2),
             Type = transactionType,
             Description = request.Description ?? string.Empty,
-            Date = request.Date,
+            Date = request.Date.Kind == DateTimeKind.Utc
+                ? request.Date
+                : (request.Date.Kind == DateTimeKind.Local
+                    ? request.Date.ToUniversalTime()
+                    : DateTime.SpecifyKind(request.Date, DateTimeKind.Utc)),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -238,6 +256,26 @@ public class TransactionService : ITransactionService
             return (false, null, "Validation failed.", errors);
         }
 
+        var requestUtcDate = request.Date.Kind switch
+        {
+            DateTimeKind.Utc => request.Date,
+            DateTimeKind.Local => request.Date.ToUniversalTime(),
+            _ => request.Date
+        };
+
+        var maxAllowedTime = request.Date.Kind == DateTimeKind.Utc || request.Date.Kind == DateTimeKind.Local
+            ? DateTime.UtcNow.AddHours(1)
+            : DateTime.UtcNow.AddHours(16);
+
+        if (requestUtcDate > maxAllowedTime)
+        {
+            var errors = new Dictionary<string, string[]>
+            {
+                { "date", new[] { "Transaction date cannot be in the future." } }
+            };
+            return (false, null, "Validation failed.", errors);
+        }
+
         var transactionType = isOtherCategory && isValidType
             ? (requestedType!.Equals("Income", StringComparison.OrdinalIgnoreCase) ? "Income" : "Expense")
             : category.Type;
@@ -246,7 +284,11 @@ public class TransactionService : ITransactionService
         transaction.Type = transactionType;
         transaction.CategoryId = request.CategoryId!.Value;
         transaction.Description = request.Description ?? string.Empty;
-        transaction.Date = request.Date;
+        transaction.Date = request.Date.Kind == DateTimeKind.Utc
+            ? request.Date
+            : (request.Date.Kind == DateTimeKind.Local
+                ? request.Date.ToUniversalTime()
+                : DateTime.SpecifyKind(request.Date, DateTimeKind.Utc));
 
         await _dbContext.SaveChangesAsync();
 
