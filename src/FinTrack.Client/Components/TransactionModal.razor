@@ -69,11 +69,6 @@
                     <input type="text" class="form-control-input" @bind-value="model.Description" placeholder="e.g. Whole Foods, Starbucks, Salary" disabled="@isLoading" required />
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Date &amp; Time</label>
-                    <InputDate Type="InputDateType.DateTimeLocal" class="form-control-input" @bind-Value="model.Date" disabled="@isLoading" required />
-                </div>
-
                 <button type="submit" class="btn-primary-action" disabled="@isLoading">
                     @if (isLoading)
                     {
@@ -217,19 +212,16 @@
         isLoading = true;
         try
         {
-            var dateInUtc = model.Date.Kind switch
-            {
-                DateTimeKind.Utc => model.Date,
-                DateTimeKind.Local => model.Date.ToUniversalTime(),
-                _ => DateTime.SpecifyKind(model.Date, DateTimeKind.Local).ToUniversalTime()
-            };
+            var dateInUtc = IsEdit && TransactionToEdit != null
+                ? (TransactionToEdit.Date.Kind == DateTimeKind.Utc
+                    ? TransactionToEdit.Date
+                    : TransactionToEdit.Date.ToUniversalTime())
+                : DateTime.UtcNow.AddMinutes(-5);
 
-            // If the date is near current time (within 15 minutes of right now),
-            // clamp it to 30 seconds ago so device clock drift never trips the server future validation
-            var nowUtc = DateTime.UtcNow;
-            if (dateInUtc > nowUtc.AddSeconds(-30) && dateInUtc <= nowUtc.AddMinutes(15))
+            // Ensure date is never in the future relative to server
+            if (dateInUtc > DateTime.UtcNow.AddMinutes(-1))
             {
-                dateInUtc = nowUtc.AddSeconds(-30);
+                dateInUtc = DateTime.UtcNow.AddMinutes(-5);
             }
 
             if (IsEdit && TransactionToEdit != null)
