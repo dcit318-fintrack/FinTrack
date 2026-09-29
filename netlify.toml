@@ -17,7 +17,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "http://fintrack-web.runasp.net/api/:splat"
+  to = "https://fintrack-web.runasp.net/api/:splat"
   status = 200
   force = true
 
