@@ -4,12 +4,12 @@ namespace FinTrack.Shared.DTOs.Auth;
 
 public class RegisterRequest
 {
-    [Required, EmailAddress]
+    [Required(ErrorMessage = "Email is required."), EmailAddress(ErrorMessage = "Enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
-    [Required, MinLength(8)]
+    [Required(ErrorMessage = "Password is required."), MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
     public string Password { get; set; } = string.Empty;
 
-    [Required, MaxLength(100)]
+    [Required(ErrorMessage = "Full name is required."), MaxLength(100)]
     public string FullName { get; set; } = string.Empty;
 }
