@@ -37,7 +37,7 @@ window.finTrackCharts = {
 
                 // Main total: "$4,250"
                 ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
-                ctx.fillStyle = '#0F172A';
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#0F172A';
                 ctx.fillText(totalSpentFormatted || '$0.00', centerX, centerY + 14);
 
                 ctx.restore();
