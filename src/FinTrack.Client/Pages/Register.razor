@@ -36,16 +36,20 @@
             <div class="form-group">
                 <label class="form-label">Full Name</label>
                 <input type="text" class="form-control-input" @bind-value="registerModel.FullName" placeholder="e.g. Lucas Hood" required />
+                <ValidationMessage For="@(() => registerModel.FullName)" style="margin-top:4px; font-size:12px; color:#EF4444;" />
             </div>
 
             <div class="form-group">
                 <label class="form-label">Email Address</label>
                 <input type="email" class="form-control-input" @bind-value="registerModel.Email" placeholder="e.g. lucas@ug.edu.gh" required />
+                 <ValidationMessage For="@(() => registerModel.Email)" style="margin-top:4px; font-size:12px; color:#EF4444;" />        
             </div>
 
             <div class="form-group">
                 <label class="form-label">Password</label>
-                <input type="password" class="form-control-input" @bind-value="registerModel.Password" placeholder="Minimum 6 characters" required />
+                <input type="password" class="form-control-input" @bind-value="registerModel.Password" placeholder="At least 8 characters" required />
+                <small style="display:block; margin-top:6px; font-size:12px; color:var(--text-secondary);">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</small>
+                <ValidationMessage For="@(() => registerModel.Password)" style="margin-top:4px; font-size:12px; color:#EF4444;" />
             </div>
 
             <button type="submit" class="btn-primary-action" disabled="@isLoading" style="margin-top: 18px;">
