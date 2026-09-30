@@ -25,7 +25,7 @@ public class ReportService : IReportService
             .Where(t => t.UserId == userId &&
                         t.Type == "Expense" &&
                         t.Date >= from &&
-                        t.Date <= to)
+                        t.Date < to.Date.AddDays(1))
             .GroupBy(t => new { t.CategoryId, t.Category.Name })
             .Select(g => new
             {
@@ -69,7 +69,7 @@ public class ReportService : IReportService
 
         var rawTransactions = await _dbContext.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId && t.Date >= from && t.Date <= to)
+            .Where(t => t.UserId == userId && t.Date >= from && t.Date < to.Date.AddDays(1))
             .Select(t => new { t.Date, t.Type, t.Amount })
             .ToListAsync();
 
