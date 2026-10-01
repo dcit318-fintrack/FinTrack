@@ -14,6 +14,15 @@
     
     /* Text colors */
     --text-primary: #0F172A;
+    --cat-food: #059669;
+    --cat-rent: #2563EB;
+    --cat-transport: #D97706;
+    --cat-utilities: #7C3AED;
+    --cat-entertainment: #DB2777;
+    --cat-salary: #0891B2;
+    --cat-other: #64748B;
+    --chart-income: #059669;
+    --chart-expense: #DC2626;
     --text-secondary: #475569;
     --text-muted: #64748B;
     --text-subtle: #94A3B8;
@@ -1455,6 +1464,15 @@ html, body {
         --border-color-input: #4B5563;
 
         --text-primary: #F9FAFB;
+        --cat-food: #34D399;
+        --cat-rent: #60A5FA;
+        --cat-transport: #FBBF24;
+        --cat-utilities: #A78BFA;
+        --cat-entertainment: #F472B6;
+        --cat-salary: #22D3EE;
+        --cat-other: #94A3B8;
+        --chart-income: #34D399;
+        --chart-expense: #F87171;
         --text-secondary: #E5E7EB;
         --text-muted: #9CA3AF;
         --text-subtle: #6B7280;
