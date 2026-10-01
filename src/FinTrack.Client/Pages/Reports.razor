@@ -71,11 +71,11 @@
                     {
                         <div class="chart-header-legend">
                             <div style="display: flex; align-items: center; gap: 6px;">
-                                <span class="legend-dot" style="background-color: #047857;"></span>
+                                <span class="legend-dot" style="background-color: var(--chart-income);"></span>
                                 <span style="color: var(--text-secondary); font-size: 12px;">Income</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 6px;">
-                                <span class="legend-dot" style="background-color: #052E36;"></span>
+                                <span class="legend-dot" style="background-color: var(--chart-expense);"></span>
                                 <span style="color: var(--text-secondary); font-size: 12px;">Expenses</span>
                             </div>
                         </div>
@@ -160,7 +160,7 @@
 
     private string[] donutLabels = Array.Empty<string>();
     private decimal[] donutData = Array.Empty<decimal>();
-    private string[] donutColors = new[] { "#052E36", "#047857", "#0E4D5E", "#93C5FD" };
+    private string[] donutColors = Array.Empty<string>();
 
     private string[] incomeExpensePeriods = Array.Empty<string>();
     private decimal[] incomeData = Array.Empty<decimal>();
@@ -204,6 +204,7 @@
         {
             donutLabels = spendingReport.Categories.Select(c => c.CategoryName).ToArray();
             donutData = spendingReport.Categories.Select(c => c.Amount).ToArray();
+            donutColors = spendingReport.Categories.Select(c => GetCategoryDotColor(c.CategoryName)).ToArray();
         }
         else
         {
@@ -230,10 +231,12 @@
     private string GetCategoryDotColor(string name)
     {
         var lower = name.ToLowerInvariant();
-        if (lower.Contains("rent")) return "#052E36";
-        if (lower.Contains("food")) return "#047857";
-        if (lower.Contains("util")) return "#0E4D5E";
-        if (lower.Contains("fun")) return "#93C5FD";
-        return "#64748B";
+        if (lower.Contains("rent")) return "var(--cat-rent)";
+        if (lower.Contains("food")) return "var(--cat-food)";
+        if (lower.Contains("transport")) return "var(--cat-transport)";
+        if (lower.Contains("util")) return "var(--cat-utilities)";
+        if (lower.Contains("entertain")) return "var(--cat-entertainment)";
+        if (lower.Contains("salary")) return "var(--cat-salary)";
+        return "var(--cat-other)";
     }
 }

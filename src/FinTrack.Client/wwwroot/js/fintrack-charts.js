@@ -1,3 +1,13 @@
+// Turns a CSS variable like 'var(--cat-food)' into the colour it currently holds,
+// so charts follow the light/dark theme defined in app.css.
+function resolveThemeColor(value, fallback) {
+    if (typeof value === 'string' && value.trim().startsWith('var(')) {
+        const name = value.trim().slice(4, -1).trim();
+        const resolved = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return resolved || fallback;
+    }
+    return value || fallback;
+}
 // FinTrack Chart.js interoperability helper
 
 window.finTrackCharts = {
@@ -35,11 +45,9 @@ window.finTrackCharts = {
                 ctx.textBaseline = 'middle';
                 ctx.fillText('Total Spent', centerX, centerY - 14);
 
-                // Main total: "$4,250"
+                                // Main total: "GH₵4,250"
                 ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
                 ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#0F172A';
-                ctx.fillText(totalSpentFormatted || '$0.00', centerX, centerY + 14);
-                ctx.fillStyle = '#0F172A';
                 ctx.fillText(totalSpentFormatted || 'GH\u20B50.00', centerX, centerY + 14);
 
                 ctx.restore();
@@ -52,12 +60,7 @@ window.finTrackCharts = {
                 labels: labels,
                 datasets: [{
                     data: data,
-                    backgroundColor: backgroundColors || [
-                        '#052E36', // Dark Teal/Navy (Rent)
-                        '#047857', // Emerald Green (Food)
-                        '#0E4D5E', // Deep Cyan (Utilities)
-                        '#93C5FD'  // Soft Blue (Fun)
-                    ],
+                    backgroundColor: (backgroundColors || []).map(c => resolveThemeColor(c, '#64748B')),
                     borderWidth: 0,
                     hoverOffset: 4
                 }]
@@ -110,7 +113,7 @@ window.finTrackCharts = {
                     {
                         label: 'Income',
                         data: incomeData,
-                        backgroundColor: '#047857', // Emerald Green
+                        backgroundColor: resolveThemeColor('var(--chart-income)', '#059669'),
                         borderRadius: 6,
                         barPercentage: 0.6,
                         categoryPercentage: 0.6
@@ -118,7 +121,7 @@ window.finTrackCharts = {
                     {
                         label: 'Expenses',
                         data: expenseData,
-                        backgroundColor: '#052E36', // Dark Navy/Teal
+                        backgroundColor: resolveThemeColor('var(--chart-expense)', '#DC2626'),
                         borderRadius: 6,
                         barPercentage: 0.6,
                         categoryPercentage: 0.6
