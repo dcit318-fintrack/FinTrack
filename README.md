@@ -7,7 +7,7 @@
 | | Link |
 |---|---|
 | **App (frontend)** | https://fintrack-we.netlify.app |
-| **API (backend)** | https://fintrack-web.runasp.net |
+| **API (backend)** | https://fintrack-web.runasp.net/scalar/ |
 | **API documentation** | https://fintrack-web.runasp.net/scalar/v1 |
 
 > The backend runs on a free hosting tier that sleeps when idle, so the first request after a quiet period can take 20–30 seconds. After that it's fast.
